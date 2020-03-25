@@ -1,5 +1,6 @@
 <?php
 namespace shgysk8zer0;
+use \PDO;
 
 class Person extends Thing
 {
@@ -30,5 +31,24 @@ class Person extends Thing
 		if (isset($data->address)) {
 			$this->setAddress(new PostalAddress($data->address));
 		}
+	}
+
+	public function save(PDO $pdo): bool
+	{
+		$stm = $pdo->prepare('INSERT OR UPDATE INTO `Person` (
+			`uuid`,
+			`name`,
+			`email`,
+			`telephone`,
+			`address`
+		) VALUES (
+			:uuid,
+			:name,
+			:email,
+			:telephone,
+			:address
+		)');
+
+		return false;
 	}
 }

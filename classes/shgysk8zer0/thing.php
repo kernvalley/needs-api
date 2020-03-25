@@ -1,6 +1,6 @@
 <?php
 namespace shgysk8zer0;
-
+use \PDO;
 class Thing extends Abstracts\Schema implements Interfaces\Thing
 {
 	public const TYPE = 'Thing';
@@ -95,5 +95,10 @@ class Thing extends Abstracts\Schema implements Interfaces\Thing
 	public function valid(): bool
 	{
 		return isset($this->_identifier);
+	}
+
+	public function save(PDO $pdo): bool
+	{
+		return true;
 	}
 }

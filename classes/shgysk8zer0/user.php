@@ -52,6 +52,40 @@ final class User implements JsonSerializable
 		$this->_updated = new DateTimeImmutable();
 	}
 
+	final public function __toString(): string
+	{
+		if ($this->isLoggedIn()) {
+			return $this->getPerson()->getName();
+		} else {
+			return '';
+		}
+	}
+
+	final public function jsonSerialize(): array
+	{
+		if ($this->isLoggedIn()) {
+			return [
+				'identifier' => $this->getUUID(),
+				'created'    => $this->getCreated(),
+				'updated'    => $this->getUpdated(),
+				'image'      => sprintf('https://secure.gravatar.com/avatar/%s?d=mm', md5($this->getPerson()->email)),
+				'person'     => $this->getPerson(),
+				'role'       => $this->getRole(),
+				'token'      => $this->_generateToken($this->getUUID()),
+			];
+		} else {
+			return [
+				'identifier' => null,
+				'created'    => null,
+				'updated'    => null,
+				'image'      => null,
+				'person'     => null,
+				'role'       => null,
+				'token'      => null,
+			];
+		}
+	}
+
 	final public function getCreated():? Date
 	{
 		return $this->_created;
@@ -82,31 +116,6 @@ final class User implements JsonSerializable
 		return isset($this->_uuid);
 	}
 
-	final public function jsonSerialize(): array
-	{
-		if ($this->isLoggedIn()) {
-			return [
-				'uuid'    => $this->getUUID(),
-				'created' => $this->getCreated(),
-				'updated' => $this->getUpdated(),
-				'image'   => sprintf('https://secure.gravatar.com/avatar/%s?d=mm', md5($this->getPerson()->email)),
-				'person'  => $this->getPerson(),
-				'role'    => $this->getRole(),
-				'token'   => $this->_generateToken($this->getUUID()),
-			];
-		} else {
-			return [
-				'uuid'    => null,
-				'created' => null,
-				'updated' => null,
-				'image'   => null,
-				'person'  => null,
-				'role'    => null,
-				'token'   => null,
-			];
-		}
-	}
-
 	final public function login(InputData $data): bool
 	{
 		if (! $data->has('email', 'password')) {
@@ -114,14 +123,14 @@ final class User implements JsonSerializable
 		} elseif (! filter_var($data->get('email', FILTER_VALIDATE_EMAIL))) {
 			return false;
 		} else {
-			$stm = $this->_pdo->prepare('SELECT `users`.`uuid`,
+			$stm = $this->_pdo->prepare('SELECT `users`.`identifier`,
 				`users`.`password`
 			FROM `Person`
-			LEFT OUTER JOIN `users` ON `Person`.`uuid` = `users`.`person`
+			LEFT OUTER JOIN `users` ON `Person`.`identifier` = `users`.`person`
 			LIMIT 1;');
 
-			if ($stm->execute(['email' => $data->get('email')]) and $user = $stm->fetchObject() and isset($user->uuid)) {
-				return $this->_getUserByUUID($user->uuid);
+			if ($stm->execute(['email' => $data->get('email')]) and $user = $stm->fetchObject() and isset($user->identifier)) {
+				return $this->_getUserByUUID($user->identifier);
 			} else {
 				return false;
 			}
@@ -135,8 +144,8 @@ final class User implements JsonSerializable
 
 	final private function _setData(object $user): bool
 	{
-		if (isset($user->uuid, $user->created, $user->updated, $user->person, $user->role)) {
-			$this->_uuid = $user->uuid;
+		if (isset($user->identifier, $user->created, $user->updated, $user->person, $user->role)) {
+			$this->_uuid = $user->identifier;
 			$user->person->image = new \StdClass();
 			$user->person->image->url = sprintf('https://secure.gravatar.com/avatar/%s?d=mm', md5($user->person->email));
 
@@ -173,18 +182,15 @@ final class User implements JsonSerializable
 	final private function _getUserByUUID(string $uuid): bool
 	{
 		$stm = $this->_pdo->prepare('SELECT JSON_OBJECT(
-			"uuid", `users`.`uuid`,
+			"identifier", `users`.`identifier`,
 			"created", DATE_FORMAT(`users`.`created`, "%Y-%m-%dT%TZ"),
 			"updated", DATE_FORMAT(`users`.`updated`, "%Y-%m-%dT%TZ"),
 			"person", JSON_OBJECT(
-				"@context", "https://schema.org",
-				"@type", "Person",
 				"name", `Person`.`name`,
 				"email", `Person`.`email`,
 				"telephone", `Person`.`telephone`,
 				"address", JSON_OBJECT(
-					"@context", "PostalAddress",
-					"identifier", `PostalAddress`.`uuid`,
+					"identifier", `PostalAddress`.`identifier`,
 					"streetAddress", `PostalAddress`.`streetAddress`,
 					"postOfficeBoxNumber", `PostalAddress`.`postOfficeBoxNumber`,
 					"addressLocality", `PostalAddress`.`addressLocality`,
@@ -208,10 +214,10 @@ final class User implements JsonSerializable
 			)
 		) AS `json`
 		FROM `users`
-		LEFT OUTER JOIN `Person` ON `users`.`person` = `Person`.`uuid`
-		LEFT OUTER JOIN `PostalAddress` ON `Person`.`address` = `PostalAddress`.`uuid`
+		LEFT OUTER JOIN `Person` ON `users`.`person` = `Person`.`identifier`
+		LEFT OUTER JOIN `PostalAddress` ON `Person`.`address` = `PostalAddress`.`identifier`
 		LEFT OUTER JOIN `roles` ON `users`.`role` = `roles`.`id`
-		WHERE `users`.`uuid` = :uuid
+		WHERE `users`.`identifier` = :uuid
 		LIMIT 1;');
 
 		if ($stm->execute(['uuid' => $uuid]) and $user = $stm->fetchObject() and isset($user->json)) {

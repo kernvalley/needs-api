@@ -1,4 +1,5 @@
 *.sql
+~db.sql
 /img/icons.svg
 *.min.*
 *.map

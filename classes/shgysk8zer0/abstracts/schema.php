@@ -6,7 +6,6 @@ use \PDOStatement;
 
 abstract class Schema
 {
-	private static $_pdo;
 
 	final public function __get(string $key)
 	{
@@ -52,16 +51,6 @@ abstract class Schema
 		}
 	}
 
-	final public static function setPDO(PDO $pdo): void
-	{
-		$this->_pdo = $pdo;
-	}
-
-	final protected function _prepare(string $sql): PDOStatement
-	{
-		return static::$_pdo->prepare($sql);
-	}
-
 	final public static function generateUUID(): string
 	{
 		return trim(`uuidgen`);
@@ -76,4 +65,6 @@ abstract class Schema
 	}
 
 	abstract public function setFromObject(object $data): void;
+
+	abstract public function save(PDO $pdo): bool;
 }
