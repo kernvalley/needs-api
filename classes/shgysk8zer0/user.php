@@ -1,6 +1,7 @@
 <?php
 namespace shgysk8zer0;
 use \shgysk8zer0\PHPAPI\Interfaces\{InputData};
+use \shgysk8zer0\{Date, Person};
 use \DateTimeImmutable;
 use \PDO;
 use \Exception;
@@ -36,6 +37,8 @@ final class User implements JsonSerializable
 
 	private $_key      = null;
 
+	private $_person = null;
+
 	private static $_expires = [
 		'value' => 1,
 		'units' => 'year',
@@ -49,12 +52,12 @@ final class User implements JsonSerializable
 		$this->_updated = new DateTimeImmutable();
 	}
 
-	final public function getCreated():? DateTimeImmutable
+	final public function getCreated():? Date
 	{
 		return $this->_created;
 	}
 
-	final public function getUpdated():? DateTimeImmutable
+	final public function getUpdated():? Date
 	{
 		return $this->_updated;
 	}
@@ -84,8 +87,8 @@ final class User implements JsonSerializable
 		if ($this->isLoggedIn()) {
 			return [
 				'uuid'    => $this->getUUID(),
-				'created' => $this->getCreated()->format(DateTimeImmutable::W3C),
-				'updated' => $this->getUpdated()->format(DateTimeImmutable::W3C),
+				'created' => $this->getCreated(),
+				'updated' => $this->getUpdated(),
 				'image'   => sprintf('https://secure.gravatar.com/avatar/%s?d=mm', md5($this->getPerson()->email)),
 				'person'  => $this->getPerson(),
 				'role'    => $this->getRole(),
@@ -135,12 +138,11 @@ final class User implements JsonSerializable
 		if (isset($user->uuid, $user->created, $user->updated, $user->person, $user->role)) {
 			$this->_uuid = $user->uuid;
 			$user->person->image = new \StdClass();
-			$user->person->image->{'@type'} = 'ImageObject';
 			$user->person->image->url = sprintf('https://secure.gravatar.com/avatar/%s?d=mm', md5($user->person->email));
 
-			$this->_created = new \DateTimeImmutable($user->created);
-			$this->_updated = new \DateTimeImmutable($user->updated);
-			$this->_person = $user->person;
+			$this->_created = new Date($user->created);
+			$this->_updated = new Date($user->updated);
+			$this->_person = new Person($user->person);
 			$this->_role = $user->role;
 			$this->_loggedIn = true;
 			return true;
@@ -256,7 +258,7 @@ final class User implements JsonSerializable
 			} else {
 				return false;
 			}
-		} catch(\Throwable $e) {
+		} catch(Throwable $e) {
 			// @TODO handle this error?
 			return false;
 		}
