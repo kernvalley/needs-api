@@ -1,0 +1,22 @@
+{
+	"name": "needs-api",
+	"version": "1.0.0",
+	"author": "Chris Zuber <admin@kernvalley.us>",
+	"license": "MIT",
+	"description": "An API for needs.kernvalley.us written in PHP & MySQL",
+	"keywords": [
+		"PHP",
+		"MySQL",
+		"API"
+	],
+	"config": {
+		"host": "localhost",
+		"port": 8081
+	},
+	"private": true,
+	"scripts": {
+		"preinstall": "git submodule update --init --recursive",
+		"start": "php -S ${npm_package_config_host}:${npm_package_config_port}",
+		"test": "php lint.php"
+	}
+}

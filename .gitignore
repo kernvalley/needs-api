@@ -68,4 +68,5 @@ typings/
 .next
 
 # Local Netlify folder
-.netlify
+.netlifydata/creds.json
+data/hmac.key
