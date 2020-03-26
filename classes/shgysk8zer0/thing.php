@@ -97,8 +97,8 @@ class Thing extends Abstracts\Schema implements Interfaces\Thing
 		return isset($this->_identifier);
 	}
 
-	public function save(PDO $pdo): bool
+	public function save(PDO $pdo):? string
 	{
-		return true;
+		return null;
 	}
 }

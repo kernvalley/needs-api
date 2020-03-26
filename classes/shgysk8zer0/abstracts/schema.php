@@ -51,6 +51,11 @@ abstract class Schema
 		}
 	}
 
+	final protected function _usedIdentifier(): string
+	{
+		return $this->getIdentifier() ?? self::generateUUID();
+	}
+
 	final public static function generateUUID(): string
 	{
 		return trim(`uuidgen`);
@@ -66,5 +71,5 @@ abstract class Schema
 
 	abstract public function setFromObject(object $data): void;
 
-	abstract public function save(PDO $pdo): bool;
+	abstract public function save(PDO $pdo):? string;
 }

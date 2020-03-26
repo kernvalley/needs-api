@@ -146,8 +146,8 @@ final class User implements JsonSerializable
 	{
 		if (isset($user->identifier, $user->created, $user->updated, $user->person, $user->role)) {
 			$this->_uuid = $user->identifier;
-			$user->person->image = new \StdClass();
-			$user->person->image->url = sprintf('https://secure.gravatar.com/avatar/%s?d=mm', md5($user->person->email));
+			// $user->person->image = new \StdClass();
+			// $user->person->image->url = sprintf('https://secure.gravatar.com/avatar/%s?d=mm', md5($user->person->email));
 
 			$this->_created = new Date($user->created);
 			$this->_updated = new Date($user->updated);
@@ -197,6 +197,14 @@ final class User implements JsonSerializable
 					"addressRegion", `PostalAddress`.`addressRegion`,
 					"postalCode", `PostalAddress`.`postalCode`,
 					"addressCountry", `PostalAddress`.`addressCountry`
+				),
+				"image", JSON_OBJECT(
+					"identifier", `ImageObject`.`identifier`,
+					"url", `ImageObject`.`url`,
+					"caption", `ImageObject`.`caption`,
+					"width", `ImageObject`.`width`,
+					"height", `ImageObject`.`height`,
+					"uploadDate", DATE_FORMAT(`ImageObject`.`uploadDate`, "%Y-%m-%dT%TZ")
 				)
 			),
 			"role", JSON_OBJECT(
@@ -216,6 +224,7 @@ final class User implements JsonSerializable
 		FROM `users`
 		LEFT OUTER JOIN `Person` ON `users`.`person` = `Person`.`identifier`
 		LEFT OUTER JOIN `PostalAddress` ON `Person`.`address` = `PostalAddress`.`identifier`
+		LEFT OUTER JOIN `ImageObject` ON `Person`.`image` = `ImageObject`.`identifier`
 		LEFT OUTER JOIN `roles` ON `users`.`role` = `roles`.`id`
 		WHERE `users`.`identifier` = :uuid
 		LIMIT 1;');

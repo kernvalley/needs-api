@@ -33,22 +33,48 @@ class Person extends Thing
 		}
 	}
 
-	public function save(PDO $pdo): bool
+	public function save(PDO $pdo):? string
 	{
-		$stm = $pdo->prepare('INSERT OR UPDATE INTO `Person` (
-			`uuid`,
-			`name`,
-			`email`,
-			`telephone`,
-			`address`
-		) VALUES (
-			:uuid,
-			:name,
-			:email,
-			:telephone,
-			:address
-		)');
+		if (! $this->valid()) {
+			return null;
+		} else {
+			if ($this->getIdentifier() === null) {
+				$this->setIdentifier(self::generateUUID());
+			}
+			$stm = $pdo->prepare('INSERT INTO `Person` (
+				`identifier`,
+				`name`,
+				`email`,
+				`telephone`,
+				`address`
+			) VALUES (
+				:uuid,
+				:name,
+				:email,
+				:telephone,
+				:address
+			) ON DUPLICATE KEY UPDATE
+				`name`      = COALESCE(:name, `Person`.`name`),
+				`email`     = :email,
+				`telephone` = :telephone,
+				`address`   = :address;');
 
-		return false;
+			if ($stm->execute([
+				'uuid'      => $this->getIdentifier(),
+				'name'      => $this->getName(),
+				'email'     => $this->getEmail(),
+				'telephone' => $this->getTelephone(),
+				'address'   => $this->getAddress(),
+			])) {
+				return $this->getIdentifier();
+			} else {
+				return null;
+			}
+		}
+	}
+
+	public function valid(): bool
+	{
+		return $this->getName() !== null;
 	}
 }
