@@ -102,4 +102,17 @@ class PostalAddress extends Thing implements Interfaces\PostalAddress
 		$this->setAddressCountry($data->addressCountry);
 		$this->setPostalCode($data->postalCode);
 	}
+
+	public static function getSQL(): string
+	{
+		return 'JSON_OBJECT(
+			"identifier", `PostalAddress`.`identifier`,
+			"streetAddress", `PostalAddress`.`streetAddress`,
+			"postOfficeBoxNumber", `PostalAddress`.`postOfficeBoxNumber`,
+			"addressLocality", `PostalAddress`.`addressLocality`,
+			"addressRegion", `PostalAddress`.`addressRegion`,
+			"postalCode", `PostalAddress`.`postalCode`,
+			"addressCountry", `PostalAddress`.`addressCountry`
+		)';
+	}
 }

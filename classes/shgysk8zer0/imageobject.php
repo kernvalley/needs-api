@@ -32,4 +32,16 @@ class ImageObject extends MediaObject implements Interfaces\ImageObject
 		parent::setFromObject($data);
 		$this->setCaption($data->caption ?? null);
 	}
+
+	public static function getSQL(): string
+	{
+		return 'JSON_OBJECT(
+			"identifier", `ImageObject`.`identifier`,
+			"url", `ImageObject`.`url`,
+			"height", `ImageObject`.`height`,
+			"width", `ImageObject`.`width`,
+			"caption", `ImageObject`.`caption`,
+			"uploadDate", DATE_FORMAT(`ImageObject`.`uploadDate`, "%Y-%m-%dT%TZ")
+		)';
+	}
 }

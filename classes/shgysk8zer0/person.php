@@ -4,11 +4,10 @@ use \PDO;
 
 class Person extends Thing
 {
+	public const TYPE = 'Person';
 	use Traits\Email;
 	use Traits\Address;
 	use Traits\Telephone;
-
-	const TYPE = 'Person';
 
 	public function jsonSerialize(): array
 	{
@@ -76,5 +75,17 @@ class Person extends Thing
 	public function valid(): bool
 	{
 		return $this->getName() !== null;
+	}
+
+	public static function getSQL(): string
+	{
+		return sprintf('JSON_OBJECT(
+			"identifier", `Person`.`identifier`,
+			"name", `Person`.`name`,
+			"email", `Person`.`email`,
+			"telephone", `Person`.`telephone`,
+			"image", %s,
+			"address", %s
+		)', ImageObject::getSQL(), PostalAddress::getSQL());
 	}
 }

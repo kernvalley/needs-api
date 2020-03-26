@@ -69,6 +69,11 @@ abstract class Schema
 		});
 	}
 
+	final public function setFromUserInput(\shgysk8zer0\PHPAPI\Interfaces\InputData $data): void
+	{
+		$this->setFromObject(json_decode(json_encode($data)));
+	}
+
 	abstract public function setFromObject(object $data): void;
 
 	abstract public function save(PDO $pdo):? string;

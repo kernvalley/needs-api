@@ -11,6 +11,8 @@ use \JsonSerializable;
 
 final class User implements JsonSerializable
 {
+	private const TABLE = 'users';
+
 	private const _PASSWORD_ALGO = PASSWORD_DEFAULT;
 
 	private const _PASSWORD_OPTS = [
@@ -152,7 +154,7 @@ final class User implements JsonSerializable
 			$this->_created = new Date($user->created);
 			$this->_updated = new Date($user->updated);
 			$this->_person = new Person($user->person);
-			$this->_role = $user->role;
+			$this->_role = new Role($user->role);
 			$this->_loggedIn = true;
 			return true;
 		} else {
@@ -162,72 +164,26 @@ final class User implements JsonSerializable
 
 	final public function can(string ...$perms): bool
 	{
-		if (isset($this->_role, $this->_role->permissions)) {
-			$valid = true;
-			$permissions = $this->_role->permissions;
-
-			foreach($perms as $perm) {
-				if ($permissions->{$perm} !== true) {
-					$valid = false;
-					break;
-				}
-			}
-			return $valid;
-		} else {
-			return false;
-		}
-
+		return isseet($this->_role) and $this->getRole()->can(...$perms);
 	}
 
 	final private function _getUserByUUID(string $uuid): bool
 	{
-		$stm = $this->_pdo->prepare('SELECT JSON_OBJECT(
+		$sql = 'SELECT JSON_OBJECT(
 			"identifier", `users`.`identifier`,
 			"created", DATE_FORMAT(`users`.`created`, "%Y-%m-%dT%TZ"),
 			"updated", DATE_FORMAT(`users`.`updated`, "%Y-%m-%dT%TZ"),
-			"person", JSON_OBJECT(
-				"name", `Person`.`name`,
-				"email", `Person`.`email`,
-				"telephone", `Person`.`telephone`,
-				"address", JSON_OBJECT(
-					"identifier", `PostalAddress`.`identifier`,
-					"streetAddress", `PostalAddress`.`streetAddress`,
-					"postOfficeBoxNumber", `PostalAddress`.`postOfficeBoxNumber`,
-					"addressLocality", `PostalAddress`.`addressLocality`,
-					"addressRegion", `PostalAddress`.`addressRegion`,
-					"postalCode", `PostalAddress`.`postalCode`,
-					"addressCountry", `PostalAddress`.`addressCountry`
-				),
-				"image", JSON_OBJECT(
-					"identifier", `ImageObject`.`identifier`,
-					"url", `ImageObject`.`url`,
-					"caption", `ImageObject`.`caption`,
-					"width", `ImageObject`.`width`,
-					"height", `ImageObject`.`height`,
-					"uploadDate", DATE_FORMAT(`ImageObject`.`uploadDate`, "%Y-%m-%dT%TZ")
-				)
-			),
-			"role", JSON_OBJECT(
-				"name", `roles`.`name`,
-				"permissions", JSON_OBJECT(
-					"createNeed", `roles`.`createNeed` = 1,
-					"editNeed", `roles`.`editNeed` = 1,
-					"listNeed", `roles`.`listNeed` = 1,
-					"deleteNeed", `roles`.`deleteNeed` = 1,
-					"listUser", `roles`.`listUser` = 1,
-					"editUser", `roles`.`editUser` = 1,
-					"deleteUser", `roles`.`deleteUser` = 1,
-					"debug", `roles`.`debug` = 1
-				)
-			)
+			"person", ' . Person::getSQL() .',
+			"role", ' . Role::getSQL() .'
 		) AS `json`
-		FROM `users`
-		LEFT OUTER JOIN `Person` ON `users`.`person` = `Person`.`identifier`
-		LEFT OUTER JOIN `PostalAddress` ON `Person`.`address` = `PostalAddress`.`identifier`
-		LEFT OUTER JOIN `ImageObject` ON `Person`.`image` = `ImageObject`.`identifier`
-		LEFT OUTER JOIN `roles` ON `users`.`role` = `roles`.`id`
-		WHERE `users`.`identifier` = :uuid
-		LIMIT 1;');
+		FROM `' . self::TABLE . '`
+		LEFT OUTER JOIN `' . Person::TYPE . '` ON `' . self::TABLE . '`.`person` = `' . Person::TYPE . '`.`identifier`
+		LEFT OUTER JOIN `' . PostalAddress::TYPE .'` ON `' . Person::TYPE . '`.`address` = `' . PostalAddress::TYPE . '`.`identifier`
+		LEFT OUTER JOIN `' . ImageObject::TYPE .'` ON `' . Person::TYPE . '`.`image` = `' . ImageObject::TYPE . '`.`identifier`
+		LEFT OUTER JOIN `' . Role::TABLE . '` ON `' . self::TABLE . '`.`role` = `' . Role::TABLE .'`.`id`
+		WHERE `' . self::TABLE . '`.`identifier` = :uuid
+		LIMIT 1;';
+		$stm = $this->_pdo->prepare($sql);
 
 		if ($stm->execute(['uuid' => $uuid]) and $user = $stm->fetchObject() and isset($user->json)) {
 			$user = json_decode($user->json);
