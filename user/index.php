@@ -2,10 +2,11 @@
 namespace User;
 
 use \Throwable;
-use \shgysk8zer0\{User};
+use \shgysk8zer0\{User, Person};
 use \shgysk8zer0\PHPAPI\{API, PDO, Headers, HTTPException};
 use \shgysk8zer0\PHPAPI\Abstracts\{HTTPStatusCodes as HTTP};
-use const \Consts\{HMAC_FILE};
+use \shgysk8zer0\PHPAPI\Interfaces\{InputData};
+use const \Consts\{HMAC_KEY};
 
 require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'autoloader.php';
 
@@ -18,7 +19,7 @@ try {
 			throw new HTTPException('Missing UUID or token', HTTP::BAD_REQUEST);
 		} else {
 			$pdo = PDO::load();
-			$user = new User($pdo, file_get_contents(HMAC_FILE));
+			$user = new User($pdo, HMAC_KEY);
 
 			if ($user->loginWithToken($req->get) and $user->can('listUser')) {
 				Headers::contentType('application/json');
@@ -31,11 +32,18 @@ try {
 
 	$api->on('POST', function(API $req): void
 	{
-		if ($req->post->has('email', 'password', 'name', 'telephone', 'address')) {
+		if ($req->post->has('password', 'person') and $req->post->get('person')) {
 			// This is a registration
-			// @ TODO Check address is valid
+			$pdo = PDO::load();
+			$user = new User($pdo, HMAC_KEY);
+			if ($user->register($req->post)) {
+				Header::contentType('application/json');
+				echo $user;
+			} else {
+				throw new HTTPException('Registration failed. Missing data or user already exists', HTTP::BAD_REQUEST);
+			}
 		} elseif ($req->post->has('email', 'password')) {
-			$user = new User(PDO::load(), file_get_contents(\Consts\HMAC_FILE));
+			$user = new User(PDO::load(), HMAC_KEY);
 			if ($user->login($req->post)) {
 				Headers::contentType('application/json');
 				echo json_encode($user);
@@ -53,11 +61,10 @@ try {
 			throw new HTTPException('Missing UUID or token', HTTP::BAD_REQUEST);
 		} else {
 			$pdo = PDO::load();
-			$user = new User($pdo, file_get_contents(HMAC_FILE));
+			$user = new User($pdo, HMAC_KEY);
 
 			if ($user->loginWithToken($req->get) and $user->can('deleteUser')) {
-				Headers::contentType('application/json');
-				echo json_encode($user);
+				throw new HTTPException('Not yet implemented', HTTP::NOT_IMPLEMENTED);
 			} else {
 				throw new HTTPException('Cannot delete users', HTTP::UNAUTHORIZED);
 			}
@@ -69,13 +76,4 @@ try {
 	Headers::status($e->getCode());
 	Headers::contentType('application/json');
 	echo json_encode($e);
-} catch(Throwable $e) {
-	Headers::status(HTTP::INTERNAL_SERVER_ERROR);
-	Headers::contentType('application/json');
-	echo json_encode([
-		'message' => $e->getMessage(),
-		'file'    => $e->getFile(),
-		'line'    => $e->getLine(),
-		'trace'   => $e->getTrace(),
-	]);
 }
