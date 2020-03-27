@@ -95,12 +95,85 @@ class PostalAddress extends Thing implements Interfaces\PostalAddress
 
 	public function setFromObject(?object $data): void
 	{
-		$this->setStreetAddress($data->streetAddress);
-		$this->setPostOfficeBoxNumber($data->postOfficeBoxNumber);
-		$this->setAddressLocality($data->addressLocality);
-		$this->setAddressRegion($data->addressRegion);
-		$this->setAddressCountry($data->addressCountry);
-		$this->setPostalCode($data->postalCode);
+		$this->setStreetAddress($data->streetAddress ?? null);
+		$this->setPostOfficeBoxNumber($data->postOfficeBoxNumber ?? null);
+		$this->setAddressLocality($data->addressLocality ?? null);
+		$this->setAddressRegion($data->addressRegion ?? null);
+		$this->setAddressCountry($data->addressCountry ?? null);
+		$this->setPostalCode($data->postalCode ?? null);
+	}
+
+	public function save(PDO $pdo):? string
+	{
+		if (! $this->valid()) {
+			return null;
+		} else {
+			if ($this->getIdentifier() === null) {
+				$this->setIdentifier(self::generateUUID());
+			}
+
+			header('X-ADDR_UUID: ' . $this->getIdentifier());
+
+			$stm = $pdo->prepare('INSERT INTO `PostalAddress` (
+				`identifier`,
+				`streetAddress`,
+				`postOfficeBoxNumber`,
+				`addressLocality`,
+				`addressRegion`,
+				`postalCode`,
+				`addressCountry`
+			) VALUES (
+				:identifier,
+				:streetAddress,
+				:postOfficeBoxNumber,
+				:addressLocality,
+				:addressRegion,
+				:postalCode,
+				:addressCountry
+			);');
+			// $stm = $pdo->prepare('INSERT INTO `PostalAddress` (
+			// 	`identifier`,
+			// 	`streetAddress`,
+			// 	`postOfficeBoxNumber`,
+			// 	`addressLocality`,
+			// 	`addressRegion`,
+			// 	`postalCode`,
+			// 	`addressCountry`
+			// ) VALUES (
+			// 	:identifier,
+			// 	:streetAddress,
+			// 	:postOfficeBoxNumber,
+			// 	:addressLocality,
+			// 	:addressRegion,
+			// 	:postalCode,
+			// 	:addressCountry
+			// ) ON DUPLICATE KEY UPDATE
+			// 	`streetAddress`       = :streetAddress,
+			// 	`postOfficeBoxNumber` = :postOfficeBoxNumber,
+			// 	`addressLocality`     = :addressLocality,
+			// 	`addressRegion`       = :addressRegion,
+			// 	`postalCode`          = :postalCode,
+			// 	`addressCountry`      = :addressCounty;');
+
+			if ($stm->execute([
+				':identifier'          => $this->getIdentifier(),
+				':streetAddress'       => $this->getStreetAddress(),
+				':postOfficeBoxNumber' => $this->getPostOfficeBoxNumber() ?? '',
+				':addressLocality'     => $this->getAddressLocality(),
+				':addressRegion'       => $this->getAddressRegion(),
+				':postalCode'          => $this->getPostalCode(),
+				':addressCountry'      => $this->getAddressCountry() ?? 'US',
+			]) and $stm->rowCount() === 1) {
+				return $this->getIdentifier();
+			} else {
+				return null;
+			}
+		}
+	}
+
+	public function valid(): bool
+	{
+		return true;// isset($this->_streetAddress, $this->_addressLocality, $this->_addressRegion, $this->_postalCode);
 	}
 
 	public static function getSQL(): string

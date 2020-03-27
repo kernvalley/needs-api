@@ -3,6 +3,7 @@ namespace shgysk8zer0\Abstracts;
 
 use \PDO;
 use \PDOStatement;
+use \shgysk8zer0\PHPAPI\Interfaces\{InputData};
 
 abstract class Schema
 {
@@ -58,7 +59,7 @@ abstract class Schema
 
 	final public static function generateUUID(): string
 	{
-		return trim(`uuidgen`);
+		return new \shgysk8zer0\PHPAPI\UUID();
 	}
 
 	final protected function _filterOutput(array $data): array
@@ -69,7 +70,7 @@ abstract class Schema
 		});
 	}
 
-	final public function setFromUserInput(\shgysk8zer0\PHPAPI\Interfaces\InputData $data): void
+	final public function setFromUserInput(InputData $data): void
 	{
 		$this->setFromObject(json_decode(json_encode($data)));
 	}

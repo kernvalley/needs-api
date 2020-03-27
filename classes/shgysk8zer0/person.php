@@ -35,11 +35,15 @@ class Person extends Thing
 	public function save(PDO $pdo):? string
 	{
 		if (! $this->valid()) {
+			header('Content-Type: application/json');
+			http_response_code(500);
+			exit(json_encode($this));
 			return null;
 		} else {
 			if ($this->getIdentifier() === null) {
 				$this->setIdentifier(self::generateUUID());
 			}
+
 			$stm = $pdo->prepare('INSERT INTO `Person` (
 				`identifier`,
 				`name`,
@@ -54,17 +58,18 @@ class Person extends Thing
 				:address
 			) ON DUPLICATE KEY UPDATE
 				`name`      = COALESCE(:name, `Person`.`name`),
-				`email`     = :email,
-				`telephone` = :telephone,
-				`address`   = :address;');
+				`email`     = COALESCE(:email, `Person`.`email`),
+				`telephone` = COALESCE(:telephone, `Person`.`telephone`),
+				`address`   = COALESCE(:address, `Person`.`address`)');
 
 			if ($stm->execute([
 				'uuid'      => $this->getIdentifier(),
 				'name'      => $this->getName(),
 				'email'     => $this->getEmail(),
 				'telephone' => $this->getTelephone(),
-				'address'   => $this->getAddress(),
-			])) {
+				'address'   => $this->getAddress() !== null ? $this->getAddress()->save($pdo) : null,
+			]) and $stm->rowCount() !== 0) {
+				header('X-Person-UUID: ' . $this->getIdentifier() ?? 'null');
 				return $this->getIdentifier();
 			} else {
 				return null;
@@ -74,7 +79,7 @@ class Person extends Thing
 
 	public function valid(): bool
 	{
-		return $this->getName() !== null;
+		return $this->getName() !== null && $this->getEmail() !== null;
 	}
 
 	public static function getSQL(): string

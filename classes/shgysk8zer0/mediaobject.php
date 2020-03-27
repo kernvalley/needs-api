@@ -56,8 +56,8 @@ class MediaObject extends CreativeWork implements Interfaces\MediaObject
 	public function setFromObject(?object $data): void
 	{
 		parent::setFromObject($data);
-		$this->setHeight($data->height);
-		$this->setWidth($data->width);
+		$this->setHeight($data->height ?? null);
+		$this->setWidth($data->width ?? null);
 
 		if (isset($data->uploadDate)) {
 			$this->setUploadDate(is_string($data->uploadDate) ? new Date($data->uploadDate) : $data->uploadDate);

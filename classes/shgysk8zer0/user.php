@@ -21,7 +21,7 @@ final class User implements JsonSerializable
 
 	public const HASH_ALGO = 'sha3-256';
 
-	private $_uuid     = '';
+	private $_uuid     = null;
 
 	private $_role     = null;
 
@@ -70,7 +70,6 @@ final class User implements JsonSerializable
 				'identifier' => $this->getUUID(),
 				'created'    => $this->getCreated(),
 				'updated'    => $this->getUpdated(),
-				'image'      => sprintf('https://secure.gravatar.com/avatar/%s?d=mm', md5($this->getPerson()->email)),
 				'person'     => $this->getPerson(),
 				'role'       => $this->getRole(),
 				'token'      => $this->_generateToken($this->getUUID()),
@@ -139,6 +138,49 @@ final class User implements JsonSerializable
 		}
 	}
 
+	final public function register(InputData $data): bool
+	{
+		if (! $data->has('password', 'person') or ! $data->get('person') instanceof InputData) {
+			return false;
+		} else {
+			$stm = $this->_pdo->prepare('INSERT INTO `users` (
+				`identifier`,
+				`password`,
+				`person`
+			) VALUES (
+				:uuid,
+				:password,
+				:person
+			);');
+
+			try {
+				$person = new Person();
+				$person->setFromUserInput($data->get('person'));
+				$this->_pdo->beginTransaction();
+
+				if ($this->getUUID() === null) {
+					$this->_uuid = Person::generateUUID();
+				}
+
+				$args = [
+					'uuid'     => $this->getUUID(),
+					'password' => password_hash($data->get('password', false), self::_PASSWORD_ALGO, self::_PASSWORD_OPTS),
+					'person'   => $person->save($this->_pdo),
+				];
+
+				if ($stm->execute($args) and $stm->rowCount() !== 0) {
+					$this->_pdo->commit();
+					return true;
+				} else {
+					throw new \Exception('Error saving `user`.`person`');
+				}
+			} catch (\Throwable $e) {
+				$this->_pdo->rollback();
+				return false;
+			}
+		}
+	}
+
 	final public function loginWithToken(InputData $input): bool
 	{
 		return $input->has('token') and $this->_checkToken($input->get('token', false));
@@ -148,8 +190,6 @@ final class User implements JsonSerializable
 	{
 		if (isset($user->identifier, $user->created, $user->updated, $user->person, $user->role)) {
 			$this->_uuid = $user->identifier;
-			// $user->person->image = new \StdClass();
-			// $user->person->image->url = sprintf('https://secure.gravatar.com/avatar/%s?d=mm', md5($user->person->email));
 
 			$this->_created = new Date($user->created);
 			$this->_updated = new Date($user->updated);
@@ -164,7 +204,7 @@ final class User implements JsonSerializable
 
 	final public function can(string ...$perms): bool
 	{
-		return isseet($this->_role) and $this->getRole()->can(...$perms);
+		return isset($this->_role) and $this->getRole()->can(...$perms);
 	}
 
 	final private function _getUserByUUID(string $uuid): bool

@@ -1,6 +1,8 @@
 <?php
 namespace shgysk8zer0;
 use \PDO;
+use \shgysk8zer0\PHPAPI\Interfaces\{InputData};
+
 class Thing extends Abstracts\Schema implements Interfaces\Thing
 {
 	public const TYPE = 'Thing';
@@ -100,5 +102,12 @@ class Thing extends Abstracts\Schema implements Interfaces\Thing
 	public function save(PDO $pdo):? string
 	{
 		return null;
+	}
+
+	final public static function createFromUserInput(InputData $data):? self
+	{
+		$thing = new self();
+		$thing->setfromUserInput($data);
+		return $thing;
 	}
 }

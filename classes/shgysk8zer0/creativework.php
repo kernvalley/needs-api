@@ -82,8 +82,8 @@ class CreativeWork extends Thing implements Interfaces\CreativeWork
 			}
 		}
 
-		$this->setCopyrightYear($data->copyrightYear);
-		$this->setHeadline($data->headline);
-		$this->setText($data->text);
+		$this->setCopyrightYear($data->copyrightYear ?? null);
+		$this->setHeadline($data->headline ?? null);
+		$this->setText($data->text ?? null);
 	}
 }

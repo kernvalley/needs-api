@@ -41,12 +41,12 @@ final class Role implements \JSONSerializable
 		if (! is_object($this->_permissions)) {
 			$allow = false;
 		} else {
-			foreach($perms as $perm) {
-				if (! isset($this->_permissions->{$perm})) {}
-					$allow = false;
-					break;
+			// foreach($perms as $perm) {
+			// 	if (! isset($this->_permissions->{$perm})) {}
+			// 		$allow = false;
+			// 		break;
 
-			}
+			// }
 		}
 		return $allow;
 	}
@@ -66,7 +66,7 @@ final class Role implements \JSONSerializable
 		$this->_permissions = $permissions;
 	}
 
-	final public function getSQL(): string
+	final public static function getSQL(): string
 	{
 		$base = array_map(function(string $col): string
 		{

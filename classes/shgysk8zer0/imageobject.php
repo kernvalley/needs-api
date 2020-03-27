@@ -33,6 +33,43 @@ class ImageObject extends MediaObject implements Interfaces\ImageObject
 		$this->setCaption($data->caption ?? null);
 	}
 
+	public function save(\PDO $pdo):? string
+	{
+		if ($this->getIdentifier() === null) {
+			$this->setIdentifier(self::generateUUID());
+		}
+
+		$stm = $pdo->prepare('INSERT INTO `ImageObject` (
+			`identifier`,
+			`url`,
+			`height`,
+			`width`,
+			`caption`
+		) VALUES (
+			:identifer,
+			:url,
+			:height,
+			:width,
+			:caption
+		) ON DUPLICATE KEY UPDATE
+			`url` = :url,
+			`height` = :height,
+			`width` = :width,
+			`caption` = :caption;');
+
+		if ($stm->execute([
+			'identifier' => $this->getIdentifier(),
+			'url'        => $this->getUrl(),
+			'height'     => $this->getHeight(),
+			'width'      => $this->getWidth(),
+			'caption'    => $this->getCaption(),
+		]) and $stm->rowCount() !== 0) {
+			return $this->getIdentifier();
+		} else {
+			return null;
+		}
+	}
+
 	public static function getSQL(): string
 	{
 		return 'JSON_OBJECT(

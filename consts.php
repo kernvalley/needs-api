@@ -51,4 +51,6 @@ define(__NAMESPACE__ . '\BASE_PATH',
 	,'/') . '/'
 );
 
+define(__NAMESPACE__ . '\HMAC_KEY', file_get_contents(HMAC_FILE));
+
 const BASE_URI = HOST . BASE_PATH;
