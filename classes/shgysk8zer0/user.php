@@ -128,6 +128,7 @@ final class User implements JsonSerializable
 				`users`.`password`
 			FROM `Person`
 			LEFT OUTER JOIN `users` ON `Person`.`identifier` = `users`.`person`
+			WHERE `Person`.`email` = :email
 			LIMIT 1;');
 
 			if ($stm->execute(['email' => $data->get('email')]) and $user = $stm->fetchObject() and isset($user->identifier)) {
