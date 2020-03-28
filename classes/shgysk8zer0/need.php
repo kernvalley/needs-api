@@ -157,7 +157,6 @@ final class Need
 	}
 
 
-
 	private function _prepare(string $sql): PDOStatement
 	{
 		return $this->_pdo->prepare($sql);
@@ -183,21 +182,29 @@ final class Need
 		$need = json_decode($result->json);
 		$need->created = new Date($need->created);
 		$need->updated = new Date($need->created);
+		$need->foo = [
+			'file' => __FILE__,
+			'line' => __LINE__,
+			'class' => __CLASS__,
+			'method' => __METHOD__,
+			'function' => __FUNCTION__,
+		];
 		$need->tags = array_map('trim', explode(',', $need->tags));
+		$need->user = new Person($need->user);
 
-		if (! isset($need->user->address->url)) {
-			$query = http_build_query([
-				'api'        => PostalAddress::GMAPS_API_VERSION,
-				'paramaters' =>join(' ', array_filter([
-					$need->user->address->streetAddress,
-					$need->user->address->addressLocality,
-					$need->user->address->addressRegion,
-					$need->user->address->postalCode,
-					$need->user->address->addressCountry,
-				])),
-			]);
-			$need->user->address->url = "https://www.google.com/maps/search/?{$query}";
-		}
+		// if (! isset($need->user->address->url)) {
+		// 	$query = http_build_query([
+		// 		'api'        => PostalAddress::GMAPS_API_VERSION,
+		// 		'paramaters' =>join(' ', array_filter([
+		// 			$need->user->address->streetAddress,
+		// 			$need->user->address->addressLocality,
+		// 			$need->user->address->addressRegion,
+		// 			$need->user->address->postalCode,
+		// 			$need->user->address->addressCountry,
+		// 		])),
+		// 	]);
+		// 	$need->user->address->url = "https://www.google.com/maps/search/?{$query}";
+		// }
 		return $need;
 	}
 }

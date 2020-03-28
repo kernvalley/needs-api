@@ -52,9 +52,9 @@ class PostalAddress extends Thing implements Interfaces\PostalAddress
 	{
 		$query = http_build_query([
 			'api'        => self::GMAPS_API_VERSION,
-			'paramaters' => $this
+			'destination' => "{$this}",
 		]);
-		return "https://www.google.com/maps/search/?{$query}";
+		return "https://www.google.com/maps/dir/?{$query}";
 	}
 
 	final public function getStreetAddress():? string

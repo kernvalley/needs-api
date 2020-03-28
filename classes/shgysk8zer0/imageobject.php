@@ -63,7 +63,7 @@ class ImageObject extends MediaObject implements Interfaces\ImageObject
 			'height'     => $this->getHeight(),
 			'width'      => $this->getWidth(),
 			'caption'    => $this->getCaption(),
-		]) and $stm->rowCount() !== 0) {
+		]) and $stm->rowCount() === 1) {
 			return $this->getIdentifier();
 		} else {
 			return null;

@@ -9,6 +9,4 @@ trait Contact
 	private $_email = null;
 
 	private $_telephone = null;
-
-	final public function getAddress
 }

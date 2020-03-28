@@ -3,12 +3,12 @@ namespace Needs;
 
 use \Throwable;
 use \shgysk8zer0\{User, Person, Need};
-use \shgysk8zer0\PHPAPI\{API, PDO, Headers, HTTPException};
+use \shgysk8zer0\PHPAPI\{API, PDO, Headers, HTTPException, Files};
 use \shgysk8zer0\PHPAPI\Abstracts\{HTTPStatusCodes as HTTP};
-use const \Consts\{HMAC_KEY};
+use const \Consts\{HMAC_KEY, UPLOADS_DIR, IMAGE_TYPES};
 
 require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'autoloader.php';
-
+Files::setAllowedTypes('image/jpeg', 'image/png');
 try {
 	$api = new API();
 
@@ -47,10 +47,10 @@ try {
 					Headers::contentType('application/json');
 					$filter = function(object $req): object
 					{
-						unset($req->description);
-						unset($req->user->address->streetAddress);
-						unset($req->user->telephone);
-						unset($req->user->email);
+						// unset($req->description);
+						// unset($req->user->address->streetAddress);
+						// unset($req->user->telephone);
+						// unset($req->user->email);
 
 						return $req;
 					};
@@ -128,11 +128,41 @@ try {
 			} else {
 				throw new HTTPException('Login rejected or permission denied', HTTP::FORBIDDEN);
 			}
+		} elseif ($req->post->has('token', 'uuid') and $req->files->has('upload')) {
+			$pdo = PDO::load();
+			$user = new User($pdo, HMAC_KEY);
+
+			if ($req->files->upload->hasError()) {
+				throw $req->files->upload->error;
+			} elseif ($user->loginWithToken($req->post) and $user->can('editNeed')) {
+				$pdo->beginTransaction();
+				$fname = UPLOADS_DIR . "{$req->files->upload->md5}.{$req->files->upload->ext}";
+				$stm = $pdo->prepare("INSERT INTO `ImageObject` (
+					`identifier`,
+					`url`,
+					`height`,
+					`width,
+				) VALUES (
+					:uuid,
+					:url,
+					:height,
+					:width
+				);");
+				$req->files->upload->saveAs(UPLOADS_DIR . "{$req->files->upload->md5}.{$req->files->upload->ext}", true);
+				Headers::contentType('application/json');
+				exit(json_encode([
+					'upload' => $req->files->upload,
+					'user'   => $user,
+				]));
+				throw new HTTPException('Missing token', HTTP::NOT_IMPLEMENTED);
+			} else {
+				throw new HTTPException('Not authorize', HTTP::NOT_AUTHORIZED);
+			}
 		} else {
-			Headers::status(HTTP::BAD_REQUEST);
 			Headers::contentType('application/json');
+			Headers::status(HTTP::BAD_REQUEST);
 			exit(json_encode($req));
-			throw new HTTPException('Missing token', HTTP::BAD_REQUEST);
+			throw new HTTPException('Invalid request', HTTP::BAD_REQUEST);
 		}
 	});
 
