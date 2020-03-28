@@ -1,6 +1,8 @@
 *.sql
 !db.sql
 /img/icons.svg
+/uploads/*
+!/uploads/.gitkeep
 *.min.*
 *.map
 ~*
