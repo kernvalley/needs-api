@@ -26,6 +26,7 @@ const INCLUDE_PATH      = [
 const CSP_ALLOWED_HEADERS = [
 	'Accept',
 	'Content-Type',
+	'User-Agent',
 	'Upgrade-Insecure-Requests',
 ];
 

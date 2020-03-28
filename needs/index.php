@@ -42,7 +42,7 @@ try {
 				$assigned = $needs->searchByAssignee($user->getPerson()->getIdentifier());
 
 				if (empty($assigned) and empty($unassigned)) {
-					throw new HTTPException('No available needs', HTTP::NOT_FOUND);
+					throw new HTTPException('No available needs', HTTP::NO_CONTENT);
 				} else {
 					Headers::contentType('application/json');
 					$filter = function(object $req): object
@@ -69,17 +69,54 @@ try {
 
 	$api->on('POST', function(API $req): void
 	{
-		if ($req->post->has('token', 'uuid')) {
+		if ($req->post->has('token', 'uuid', 'assignee')) {
+			// Assign user
+			$pdo = PDO::load();
+			$user = new User($pdo, HMAC_KEY);
+			if ($user->loginWithToken($req->post) and ($user->getPerson()->getIdentifier() === $req->post->get('assignee') or $user->can('editNeed'))) {
+				// @TODO Get `Person`.`identifier`
+				$stm = $pdo->prepare('UPDATE `needs`
+					SET `assigned` = :assigned
+					WHERE `identifier` = :uuid
+					LIMIT 1;');
+				if ($stm->execute([
+					'assigned' => $req->post->get('assignee'),
+					'uuid' => $req->post->get('uuid'),
+				]) and $stm->rowCount() === 1) {
+					Headers::status(HTTP::NO_CONTENT);
+				} else {
+					throw new HTTPException('Error updating request', HTTP::INTERNAL_SERVER_ERROR);
+				}
+			} else {
+				throw new HTTPException('Token not valid or permission denied', HTTP::FORBIDDEN);
+			}
+		} elseif ($req->post->has('token', 'uuid', 'status')) {
 			// Update existing Request
-			throw new HTTPException('Not implemented', HTTP::NOT_IMPLEMENTED);
-		} elseif ($req->post->has('token')) {
+			$pdo = PDO::load();
+			$user = new User($pdo, HMAC_KEY);
+			// @TODO allow assigned users to update status, regardless of permissions
+			if ($user->loginWithToken($req->post) and $user->can('editNeed')) {
+				$stm = $pdo->prepare('Update `needs` SET `status` = :status WHERE `identifier` = :uuid LIMIT 1;');
+				if ($stm->execute([
+					'status' => $req->post->get('status'),
+					'uuid'   => $req->post->get('uuid'),
+				]) and $stm->rowCount() === 1) {
+					Headers::status(HTTP::NO_CONTENT);
+				} else {
+					throw new HTTPException('Failed to update status', HTTP::INTERNAL_SERVER_ERROR);
+				}
+			} else {
+				// Login failed
+				throw new HTTPException('Token not valid or permission denied', HTTP::FORBIDDEN);
+			}
+		} elseif ($req->post->has('token', 'tags', 'title', 'description')) {
 			// Creating request
 			$pdo = PDO::load();
 			$user = new User($pdo, HMAC_KEY);
 
 			if ($user->loginWithToken($req->post) and $user->can('createNeed')) {
-				$needs = new Needs($pdo);
-				$uuid = $needs->createFromUserInput($req->post);
+				$needs = new Need($pdo);
+				$uuid = $needs->createFromUserInput($user, $req->post);
 
 				if (isset($uuid)) {
 					Headers::contentType('application/json');
@@ -92,6 +129,9 @@ try {
 				throw new HTTPException('Login rejected or permission denied', HTTP::FORBIDDEN);
 			}
 		} else {
+			Headers::status(HTTP::BAD_REQUEST);
+			Headers::contentType('application/json');
+			exit(json_encode($req));
 			throw new HTTPException('Missing token', HTTP::BAD_REQUEST);
 		}
 	});
@@ -110,4 +150,13 @@ try {
 	Headers::status($e->getCode());
 	Headers::contentType('application/json');
 	echo json_encode($e);
+} catch(Throwable $e) {
+	Headers::status(HTTP::INTERNAL_SERVER_ERROR);
+	Headers::contentType('application/json');
+	echo json_encode([
+		'message' => $e->getMessage(),
+		'file'    => $e->getFile(),
+		'line'    => $e->getLine(),
+		'trace'   => $e->getTrace(),
+	]);
 }

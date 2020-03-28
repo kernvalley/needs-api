@@ -1,10 +1,13 @@
 <?php
 namespace shgysk8zer0;
 use \PDO;
+use \shgysk8zer0\PHPAPI\{URL};
 
 class PostalAddress extends Thing implements Interfaces\PostalAddress
 {
 	public const TYPE = 'PostalAddress';
+
+	public const GMAPS_API_VERSION = 1;
 
 	private $_streetAddress = null;
 
@@ -18,6 +21,17 @@ class PostalAddress extends Thing implements Interfaces\PostalAddress
 
 	private $_addressCountry = null;
 
+	public function __toString(): string
+	{
+		return join(' ', array_filter([
+			$this->getStreetAddress(),
+			$this->getAddressLocality(),
+			$this->getAddressRegion(),
+			$this->getPostalCode(),
+			$this->getAddressCountry(),
+		]));
+	}
+
 	public function jsonSerialize(): array
 	{
 		return array_filter(array_merge(
@@ -29,8 +43,18 @@ class PostalAddress extends Thing implements Interfaces\PostalAddress
 				'addressRegion'       => $this->getAddressRegion(),
 				'postalCode'          => $this->getPostalCode(),
 				'addressCountry'      => $this->getAddressCountry(),
+				'url'                 => $this->getGoogleMapsUrl(),
 			]
 		));
+	}
+
+	final public function getGoogleMapsUrl(): string
+	{
+		$query = http_build_query([
+			'api'        => self::GMAPS_API_VERSION,
+			'paramaters' => $this
+		]);
+		return "https://www.google.com/maps/search/?{$query}";
 	}
 
 	final public function getStreetAddress():? string
@@ -131,29 +155,6 @@ class PostalAddress extends Thing implements Interfaces\PostalAddress
 				:postalCode,
 				:addressCountry
 			);');
-			// $stm = $pdo->prepare('INSERT INTO `PostalAddress` (
-			// 	`identifier`,
-			// 	`streetAddress`,
-			// 	`postOfficeBoxNumber`,
-			// 	`addressLocality`,
-			// 	`addressRegion`,
-			// 	`postalCode`,
-			// 	`addressCountry`
-			// ) VALUES (
-			// 	:identifier,
-			// 	:streetAddress,
-			// 	:postOfficeBoxNumber,
-			// 	:addressLocality,
-			// 	:addressRegion,
-			// 	:postalCode,
-			// 	:addressCountry
-			// ) ON DUPLICATE KEY UPDATE
-			// 	`streetAddress`       = :streetAddress,
-			// 	`postOfficeBoxNumber` = :postOfficeBoxNumber,
-			// 	`addressLocality`     = :addressLocality,
-			// 	`addressRegion`       = :addressRegion,
-			// 	`postalCode`          = :postalCode,
-			// 	`addressCountry`      = :addressCounty;');
 
 			if ($stm->execute([
 				':identifier'          => $this->getIdentifier(),

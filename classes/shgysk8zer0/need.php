@@ -2,10 +2,11 @@
 namespace shgysk8zer0;
 use \PDO;
 use \PDOStatement;
-use \shgysk8zer0\{Date, User};
+use \shgysk8zer0\{Date, User, PostalAddress};
 use \shgysk8zer0\PHPAPI\{UUID};
 use \shgysk8zer0\PHPAPI\Interfaces\{InputData};
 
+// @TODO rewrite to contain own data for modification & saving
 final class Need
 {
 	private const TABLE = 'needs';
@@ -35,7 +36,7 @@ final class Need
 
 	public function createFromUserInput(User $user, InputData $data):? string
 	{
-		if ($user->loggedIn()) {
+		if ($user->isLoggedIn()) {
 			if ($data->has('title', 'description', 'tags')) {
 				$uuid = new UUID();
 				$stm = $this->_prepare('INSERT INTO `' . self::TABLE . '` (
@@ -54,7 +55,7 @@ final class Need
 
 				if ($stm->execute([
 					'uuid'        => $uuid,
-					'user'        => $user->person->identifier,
+					'user'        => $user->getPerson()->getIdentifier(),
 					'title'       => $data->get('title'),
 					'description' => $data->get('description'),
 					'tags'        => $data->get('tags'),
@@ -183,6 +184,20 @@ final class Need
 		$need->created = new Date($need->created);
 		$need->updated = new Date($need->created);
 		$need->tags = array_map('trim', explode(',', $need->tags));
+
+		if (! isset($need->user->address->url)) {
+			$query = http_build_query([
+				'api'        => PostalAddress::GMAPS_API_VERSION,
+				'paramaters' =>join(' ', array_filter([
+					$need->user->address->streetAddress,
+					$need->user->address->addressLocality,
+					$need->user->address->addressRegion,
+					$need->user->address->postalCode,
+					$need->user->address->addressCountry,
+				])),
+			]);
+			$need->user->address->url = "https://www.google.com/maps/search/?{$query}";
+		}
 		return $need;
 	}
 }
