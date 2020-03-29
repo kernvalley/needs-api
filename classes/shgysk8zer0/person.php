@@ -1,6 +1,9 @@
 <?php
 namespace shgysk8zer0;
+use \shgysk8zer0\{ImageObject};
+use \shgysk8zer0\PHPAPI\{File};
 use \PDO;
+use \Throwable;
 
 class Person extends Thing
 {
@@ -74,6 +77,43 @@ class Person extends Thing
 			} else {
 				return null;
 			}
+		}
+	}
+
+	final public function setImageFromFile(PDO $pdo, File $img, string $fname):? ImageObject
+	{
+		try {
+			if ($img->hasError()) {
+				return null;
+			} elseif (@file_exists($fname)) {
+				return null;
+			} elseif ($img->saveAs($fname)) {
+				$image = new ImageObject();
+				$image->setUrl($img->url);
+				// @TODO get image encoding & dimensions
+				// @TODO resize & optimize image
+				if ($img_uuid = $image->save($pdo)) {
+					$stm = $pdo->prepare('UPDATE `Person`
+						SET `image` = :img
+						WHERE `identifier` = :uuid
+						LIMIT 1;');
+
+					if ($stm->execute([
+						'img' => $img_uuid,
+						'uuid' => $this->getIdentifier(),
+					])) {
+						return $image;
+					} else {
+						return null;
+					}
+				} else {
+					return null;
+				}
+			} else {
+				return null;
+			}
+		} catch (Throwable $e) {
+			return null;
 		}
 	}
 
