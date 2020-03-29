@@ -1,7 +1,8 @@
 <?php
 namespace shgysk8zer0;
+use \shgysk8zer0\PHPAPI\{File};
 use \shgysk8zer0\PHPAPI\Interfaces\{InputData};
-use \shgysk8zer0\{Date, Person};
+use \shgysk8zer0\{Date, Person, ImageObject};
 use \DateTimeImmutable;
 use \PDO;
 use \Exception;
@@ -126,6 +127,52 @@ final class User implements JsonSerializable
 	final public function isLoggedIn(): bool
 	{
 		return isset($this->_uuid);
+	}
+
+	final public function setImageFromFile(PDO $pdo, File $img, string $fname):? ImageObject
+	{
+		header('X-DEST: ' . $fname);
+		try {
+			if ($img->hasError()) {
+				return null;
+			} elseif (@file_exists($fname)) {
+				return null;
+			} elseif ($img->saveAs($fname)) {
+				$image = new ImageObject();
+				$image->setUrl($img->url);
+				// @TODO get image encoding & dimensions
+				// @TODO resize & optimize image
+				if ($img_uuid = $image->save($pdo)) {
+					$stm = $pdo->prepare('UPDATE `Person`
+						SET `image` = :img
+						WHERE `identifier` = :uuid
+						LIMIT 1;');
+
+					if ($stm->execute([
+						'img' => $img_uuid,
+						'uuid' => $this->getPerson()->getIdentifier(),
+					])) {
+						return $image;
+					} else {
+						return null;
+					}
+				} else {
+					return null;
+				}
+			} else {
+				return null;
+			}
+		} catch (\Throwable $e) {
+			http_response_code(500);
+			header('Content-Type: application/json');
+			exit(json_encode([
+				'message' => $e->getMessage(),
+				'file'    => $e->getFile(),
+				'line'    => $e->getLine(),
+				'trace'   => $e->getTrace(),
+			]));
+			return null;
+		}
 	}
 
 	final public function login(InputData $data): bool

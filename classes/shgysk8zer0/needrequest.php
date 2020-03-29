@@ -26,6 +26,10 @@ final class NeedRequest implements JSONSerializable
 
 	private $_assignee = null;
 
+	private $_created = null;
+
+	private $_updated = null;
+
 	final public function __construct(?object $data = null)
 	{
 		if (isset($data)) {
@@ -40,8 +44,11 @@ final class NeedRequest implements JSONSerializable
 			'title'       => $this->getTitle(),
 			'description' => $this->getDescription(),
 			'tags'        => $this->getTags(),
+			'status'      => $this->getStatus(),
 			'user'        => $this->getUser(),
 			'assigned'    => $this->getAssignee(),
+			'created'     => $this->getCreated(),
+			'updated'     => $this->getUpdated(),
 		];
 	}
 
@@ -65,6 +72,11 @@ final class NeedRequest implements JSONSerializable
 	final public function setAssignee(?string $val): void
 	{
 		$this->_assignee = $val;
+	}
+
+	final public function getCreated():? Date
+	{
+		return $this->_created;
 	}
 
 	final public function getIdentifier():? string
@@ -120,6 +132,11 @@ final class NeedRequest implements JSONSerializable
 	final public function getUser():? Person
 	{
 		return $this->_user;
+	}
+
+	final public function getUpdated():? Date
+	{
+		return $this->_updated;
 	}
 
 	final public function setUser(?Person $val): void
@@ -365,6 +382,14 @@ final class NeedRequest implements JSONSerializable
 			$this->setTitle($data->title ?? null);
 			$this->setDescription($data->description ?? null);
 			$this->setStatus($data->status ?? null);
+
+			if (isset($data->created)) {
+				$this->_created = new Date($data->created);
+			}
+
+			if (isset($data->updated)) {
+				$this->_updated = new Date($data->updated);
+			}
 
 			if (isset($data->tags)) {
 				if (@is_string($data->tags)) {
