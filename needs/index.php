@@ -20,7 +20,7 @@ try {
 			$user = new User($pdo, HMAC_KEY);
 
 			if ($user->loginWithToken($req->get) and $user->can('listNeed')) {
-				if ($need = NeedRequest::getByIdentifier($pdo, $req->get->get('uuid'))) {
+				if ($need = NeedRequest::getFromIdentifier($pdo, $req->get->get('uuid'))) {
 					Headers::contentType('application/json');
 					exit(json_encode($need));
 				} else {
@@ -58,7 +58,7 @@ try {
 			$user = new User($pdo, HMAC_KEY);
 			if ($user->loginWithToken($req->post) and $user->can('editNeed')) {
 				// @TODO Get `Person`.`identifier`
-				$need = NeedRequest::getByIdentifier($pdo, $req->post->get('uuid'));
+				$need = NeedRequest::getFromIdentifier($pdo, $req->post->get('uuid'));
 				if (isset($need)) {
 					$assignee = Person::getFromIdentifier($pdo, $req->post->get('assignee'));
 					if (isset($assignee)) {
@@ -84,7 +84,7 @@ try {
 			$user = new User($pdo, HMAC_KEY);
 			// @TODO allow assigned users to update status, regardless of permissions
 			if ($user->loginWithToken($req->post) and $user->can('editNeed')) {
-				$need = NeedRequest::getByIdentifier($pdo, $req->post->get('uuid'));
+				$need = NeedRequest::getFromIdentifier($pdo, $req->post->get('uuid'));
 
 				if (isset($need)) {
 					$need->setStatus($req->post->get('status'));
@@ -127,34 +127,26 @@ try {
 
 			if ($req->files->upload->hasError()) {
 				throw $req->files->upload->error;
+			} elseif (! $need = NeedRequest::getFromIdentifier($pdo, $req->post->get('uuid'))) {
+				throw new HTTPException('Not found', HTTP::NOT_FOUND);
 			} elseif ($user->loginWithToken($req->post) and $user->can('editNeed')) {
 				$pdo->beginTransaction();
 				$fname = UPLOADS_DIR . "{$req->files->upload->md5}.{$req->files->upload->ext}";
-				$stm = $pdo->prepare("INSERT INTO `ImageObject` (
-					`identifier`,
-					`url`,
-					`height`,
-					`width,
-				) VALUES (
-					:uuid,
-					:url,
-					:height,
-					:width
-				);");
-				$req->files->upload->saveAs(UPLOADS_DIR . "{$req->files->upload->md5}.{$req->files->upload->ext}", true);
-				Headers::contentType('application/json');
-				exit(json_encode([
-					'upload' => $req->files->upload,
-					'user'   => $user,
-				]));
-				throw new HTTPException('Missing token', HTTP::NOT_IMPLEMENTED);
+
+				if (file_exists($fname)) {
+					throw new HTTPException('File already uploaded', HTTP::CONFLICT);
+				} elseif ($result =$need->attach($pdo, $req->files->upload, $fname, $user)) {
+					Headers::status(HTTP::CREATED);
+					$pdo->commit();
+					echo json_encode(['uuid' => $result]);
+				} else {
+					$pdo->rollBack();
+					throw new HTTPException('Error saving file', HTTP::INTERNAL_SERVER_ERROR);
+				}
 			} else {
 				throw new HTTPException('Not authorize', HTTP::NOT_AUTHORIZED);
 			}
 		} else {
-			Headers::contentType('application/json');
-			Headers::status(HTTP::BAD_REQUEST);
-			exit(json_encode($req));
 			throw new HTTPException('Invalid request', HTTP::BAD_REQUEST);
 		}
 	});

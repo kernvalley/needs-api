@@ -9,6 +9,7 @@ use \InvalidArgumentException;
 use \Throwable;
 use \JsonSerializable;
 
+// @TODO Deprecate all UUID methods in favor of identifier
 final class User implements JsonSerializable
 {
 	private const TABLE = 'users';
@@ -105,6 +106,16 @@ final class User implements JsonSerializable
 	final public function getRole():? object
 	{
 		return $this->_role;
+	}
+
+	final public function getIdentifier():? string
+	{
+		return $this->_uuid;
+	}
+
+	final public function setIdentifier(?string $val): void
+	{
+		$this->_uuid = $val;
 	}
 
 	final public function getUUID():? string

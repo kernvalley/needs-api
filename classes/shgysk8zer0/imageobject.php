@@ -48,7 +48,7 @@ class ImageObject extends MediaObject implements Interfaces\ImageObject
 			`width`,
 			`caption`
 		) VALUES (
-			:identifer,
+			:identifier,
 			:url,
 			:height,
 			:width,
@@ -82,6 +82,11 @@ class ImageObject extends MediaObject implements Interfaces\ImageObject
 			"caption", `ImageObject`.`caption`,
 			"uploadDate", DATE_FORMAT(`ImageObject`.`uploadDate`, "%Y-%m-%dT%TZ")
 		)';
+	}
+
+	public function valid(): bool
+	{
+		return $this->getUrl() !== null;
 	}
 
 	public static function getJoins(): array

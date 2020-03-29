@@ -2,8 +2,10 @@
 namespace shgysk8zer0;
 use \PDO;
 use \JSONSerializable;
-use \shgysk8zer0\{User, Person};
-use \shgysk8zer0\PHPAPI\{UUID};
+use \Throwable;
+use \StdClass;
+use \shgysk8zer0\{User, Person, ImageObject};
+use \shgysk8zer0\PHPAPI\{UUID, File, HTTPException};
 use \shgysk8zer0\PHPAPI\Interfaces\{InputData};
 
 final class NeedRequest implements JSONSerializable
@@ -224,7 +226,7 @@ final class NeedRequest implements JSONSerializable
 		)';
 	}
 
-	final public static function getByIdentifier(PDO $pdo, string $uuid):? self
+	final public static function getFromIdentifier(PDO $pdo, string $uuid):? self
 	{
 		$stm = $pdo->prepare('SELECT ' . static::getSQL(). ' AS `json`
 			FROM `' . self::TABLE . '`
@@ -290,6 +292,70 @@ final class NeedRequest implements JSONSerializable
 		}
 	}
 
+	final public function attach(PDO $pdo, File $image, string $path, User $user):? string
+	{
+		if (file_exists($path)) {
+			return null;
+		}
+		try {
+			if ($image->saveAs($path, true)) {
+				$data = new StdClass();
+				$data->url = $image->url;
+				$data->identifier = new UUID();
+
+				if ($img_uuid = (new ImageObject($data))->save($pdo)) {
+					$stm = $pdo->prepare('INSERT INTO `uploads` (
+						`identifier`,
+						`image`,
+						`uploader`,
+						`need`
+					) VALUES (
+						:uuid,
+						:image,
+						:user,
+						:need
+					);');
+
+					$uuid = new UUID();
+
+					if ($stm->execute([
+						'uuid'  => $uuid,
+						'image' => $img_uuid,
+						'user'  => $user->getIdentifier(),
+						'need'  => $this->getIdentifier(),
+					]) and $stm->rowCount() === 1) {
+						return $uuid;
+					}
+				} else {
+					throw new HTTPException('Error saving image', HTTP::INTERNAL_SERVER_ERROR);
+				}
+			}
+		} catch (HTTPException $e) {
+			http_response_code($e->getStatus());
+			header('Content-Type: application/json');
+			exit(json_encode([
+				'message' => $e->getMessage(),
+				'file'    => $e->getFile(),
+				'line'    => $e->getLine(),
+				'trace'   => $e->getTrace(),
+			]));
+		} catch(Throwable $e) {
+			// @TODO Check it is not a duplicate file
+			if (file_exists($path)) {
+				unlink($path);
+			}
+			http_response_code(500);
+			header('Content-Type: application/json');
+			exit(json_encode([
+				'message' => $e->getMessage(),
+				'file'    => $e->getFile(),
+				'line'    => $e->getLine(),
+				'trace'   => $e->getTrace(),
+			]));
+			return null;
+		}
+	}
+
 	final public function setFromObject(?object $data): void
 	{
 		// header('Content-Type: application/json');
@@ -315,6 +381,27 @@ final class NeedRequest implements JSONSerializable
 			if (isset($data->assigned) and is_string($data->assigned)) {
 				$this->setAssignee($data->assigned);
 			}
+		}
+	}
+
+	final public static function getAttachments(PDO $pdo, string $need_uuid, int $page = 1, int $count = 25): array
+	{
+		$stm = $pdo->prepare('SELECT  `ImageObject`.`url` AS `image`,
+			`ImageObject`.`identifier` AS `identifier`,
+			`Person`.`name` AS `uploadedBy`,
+			DATE_FORMAT(`ImageObject`.`uploadDate`, "%Y-%m-%dT%TZ") AS `uploadDate`
+		FROM `uploads`
+		LEFT OUTER JOIN `users` ON `uploads`.`uploader` = `users`.`identifier`
+		LEFT OUTER JOIN `ImageObject` ON `uploads`.`image` = `ImageObject`.`identifier`
+		LEFT OUTER JOIN `Person` ON `users`.`person` = `Person`.`identifier`
+		WHERE `need` = :need
+		ORDER BY `ImageObject`.`uploadDate` DESC
+		LIMIT ' . static::_getPages($page, $count) . ';');
+
+		if ($stm->execute(['need' => $need_uuid]) and $results = $stm->fetchAll(PDO::FETCH_CLASS)) {
+			return $results;
+		} else {
+			return [];
 		}
 	}
 
