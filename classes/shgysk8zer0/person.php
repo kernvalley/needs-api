@@ -82,6 +82,14 @@ class Person extends Thing
 		return $this->getName() !== null && $this->getEmail() !== null;
 	}
 
+	public static function getJoins(): array
+	{
+		return [
+			'LEFT OUTER JOIN `PostalAddress` ON `' . static:: TYPE . '`.`address` = `PostalAddress`.`identifier`',
+			'LEFT OUTER JOIN `ImageObject` ON `' . static::TYPE . '`.`image` = `ImageObject`.`identifier`',
+		];
+	}
+
 	public static function getSQL(): string
 	{
 		return sprintf('JSON_OBJECT(
@@ -92,5 +100,39 @@ class Person extends Thing
 			"image", %s,
 			"address", %s
 		)', ImageObject::getSQL(), PostalAddress::getSQL());
+	}
+
+	public static function getFromIdentifier(PDO $pdo, string $uuid):? self
+	{
+		$stm = $pdo->prepare('SELECT ' . static::getSQL() .' AS `json`
+			FROM ' . static::TYPE .'
+			' . join("\n", static::getJoins()) .'
+			WHERE `' . static::TYPE . '`.`identifier` = :uuid
+			LIMIT 1;');
+
+		if ($stm->execute(['uuid' => $uuid]) and $result = $stm->fetchObject()) {
+			return new self(json_decode($result->json));
+		} else {
+			return null;
+		}
+	}
+
+	public static function searchByName(PDO $pdo, string $name, int $page = 1, int $count = 25): array
+	{
+		$q = '%' . str_replace([' '], ['%'], $name) . '%';
+		$stm = $pdo->prepare('SELECT ' . static::getSQL() .' AS `json`
+			FROM ' . static::TYPE .'
+			' . join("\n", static::getJoins()) .'
+			WHERE `' . static::TYPE . '`.`name` LIKE :name
+			LIMIT ' . self::_getPages($page, $count) . ';');
+
+		if ($stm->execute(['name' => $q]) and $results = $stm->fetchAll(PDO::FETCH_CLASS)) {
+			return array_map(function(object $result): self
+			{
+				return new self(json_decode($result->json));
+			}, $results);
+		} else {
+			return [];
+		}
 	}
 }

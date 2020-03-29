@@ -1,8 +1,10 @@
 <?php
 namespace shgysk8zer0;
+use \PDO;
 
 class ImageObject extends MediaObject implements Interfaces\ImageObject
 {
+	// @TODO Create from POST + FILES
 	public const TYPE = 'ImageObject';
 
 	private $_caption = null;
@@ -33,7 +35,7 @@ class ImageObject extends MediaObject implements Interfaces\ImageObject
 		$this->setCaption($data->caption ?? null);
 	}
 
-	public function save(\PDO $pdo):? string
+	public function save(PDO $pdo):? string
 	{
 		if ($this->getIdentifier() === null) {
 			$this->setIdentifier(self::generateUUID());
@@ -52,9 +54,9 @@ class ImageObject extends MediaObject implements Interfaces\ImageObject
 			:width,
 			:caption
 		) ON DUPLICATE KEY UPDATE
-			`url` = :url,
-			`height` = :height,
-			`width` = :width,
+			`url`     = :url,
+			`height`  = :height,
+			`width`   = :width,
 			`caption` = :caption;');
 
 		if ($stm->execute([
@@ -80,5 +82,10 @@ class ImageObject extends MediaObject implements Interfaces\ImageObject
 			"caption", `ImageObject`.`caption`,
 			"uploadDate", DATE_FORMAT(`ImageObject`.`uploadDate`, "%Y-%m-%dT%TZ")
 		)';
+	}
+
+	public static function getJoins(): array
+	{
+		return [];
 	}
 }

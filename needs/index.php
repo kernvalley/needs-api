@@ -2,7 +2,7 @@
 namespace Needs;
 
 use \Throwable;
-use \shgysk8zer0\{User, Person, Need};
+use \shgysk8zer0\{User, Person, Need, NeedRequest};
 use \shgysk8zer0\PHPAPI\{API, PDO, Headers, HTTPException, Files};
 use \shgysk8zer0\PHPAPI\Abstracts\{HTTPStatusCodes as HTTP};
 use const \Consts\{HMAC_KEY, UPLOADS_DIR, IMAGE_TYPES};
@@ -20,14 +20,11 @@ try {
 			$user = new User($pdo, HMAC_KEY);
 
 			if ($user->loginWithToken($req->get) and $user->can('listNeed')) {
-				$needs = new Need($pdo);
-				$result = $needs->getByIdentifier($req->get->get('uuid'));
-
-				if (isset($result)) {
+				if ($need = NeedRequest::getByIdentifier($pdo, $req->get->get('uuid'))) {
 					Headers::contentType('application/json');
-					echo json_encode($result);
+					exit(json_encode($need));
 				} else {
-					throw new HTTPException('No available needs', HTTP::NOT_FOUND);
+					throw new HTTPException('Not found', HTTP::NOT_FOUND);
 				}
 			} else {
 				throw new HTTPException('Permission not granted', HTTP::FORBIDDEN);
@@ -37,27 +34,13 @@ try {
 			$user = new User($pdo, HMAC_KEY);
 
 			if ($user->loginWithToken($req->get) and $user->can('listNeed')) {
-				$needs = new Need($pdo);
-				$unassigned = $needs->listUnassigned($req->get->get('uuid'));
-				$assigned = $needs->searchByAssignee($user->getPerson()->getIdentifier());
+				$needs = NeedRequest::searchByAssigned($pdo, $user->getPerson());
 
-				if (empty($assigned) and empty($unassigned)) {
-					throw new HTTPException('No available needs', HTTP::NO_CONTENT);
-				} else {
+				if (! empty($needs)) {
 					Headers::contentType('application/json');
-					$filter = function(object $req): object
-					{
-						// unset($req->description);
-						// unset($req->user->address->streetAddress);
-						// unset($req->user->telephone);
-						// unset($req->user->email);
-
-						return $req;
-					};
-					echo json_encode([
-						'assigned'   => array_map($filter, $assigned),
-						'unassigned' => array_map($filter, $unassigned),
-					]);
+					echo json_encode($needs);
+				} else {
+					Headers::status(HTTP::NO_CONTENT);
 				}
 			} else {
 				throw new HTTPException('Permission not granted', HTTP::FORBIDDEN);
@@ -73,19 +56,24 @@ try {
 			// Assign user
 			$pdo = PDO::load();
 			$user = new User($pdo, HMAC_KEY);
-			if ($user->loginWithToken($req->post) and ($user->getPerson()->getIdentifier() === $req->post->get('assignee') or $user->can('editNeed'))) {
+			if ($user->loginWithToken($req->post) and $user->can('editNeed')) {
 				// @TODO Get `Person`.`identifier`
-				$stm = $pdo->prepare('UPDATE `needs`
-					SET `assigned` = :assigned
-					WHERE `identifier` = :uuid
-					LIMIT 1;');
-				if ($stm->execute([
-					'assigned' => $req->post->get('assignee'),
-					'uuid' => $req->post->get('uuid'),
-				]) and $stm->rowCount() === 1) {
-					Headers::status(HTTP::NO_CONTENT);
+				$need = NeedRequest::getByIdentifier($pdo, $req->post->get('uuid'));
+				if (isset($need)) {
+					$assignee = Person::getFromIdentifier($pdo, $req->post->get('assignee'));
+					if (isset($assignee)) {
+						$need->assignPerson($assignee);
+
+						if ($need->save($pdo) !== null) {
+							Headers::status(HTTP::NO_CONTENT);
+						} else {
+							throw new HTTPException('Error updating assignee', HTTP::INTERNAL_SERVER_ERROR);
+						}
+					} else {
+						throw new HTTPException('Assignee not found', HTTP::NOT_FOUND);
+					}
 				} else {
-					throw new HTTPException('Error updating request', HTTP::INTERNAL_SERVER_ERROR);
+					throw new HTTPException('Request not found', HTTP::NOT_FOUND);
 				}
 			} else {
 				throw new HTTPException('Token not valid or permission denied', HTTP::FORBIDDEN);
@@ -96,14 +84,18 @@ try {
 			$user = new User($pdo, HMAC_KEY);
 			// @TODO allow assigned users to update status, regardless of permissions
 			if ($user->loginWithToken($req->post) and $user->can('editNeed')) {
-				$stm = $pdo->prepare('Update `needs` SET `status` = :status WHERE `identifier` = :uuid LIMIT 1;');
-				if ($stm->execute([
-					'status' => $req->post->get('status'),
-					'uuid'   => $req->post->get('uuid'),
-				]) and $stm->rowCount() === 1) {
-					Headers::status(HTTP::NO_CONTENT);
+				$need = NeedRequest::getByIdentifier($pdo, $req->post->get('uuid'));
+
+				if (isset($need)) {
+					$need->setStatus($req->post->get('status'));
+
+					if ($need->save($pdo) !== null) {
+						Headers::status(HTTP::NO_CONTENT);
+					} else {
+						throw new HTTPException('Error updating status', HTTP::INTERNAL_SERVER_ERROR);
+					}
 				} else {
-					throw new HTTPException('Failed to update status', HTTP::INTERNAL_SERVER_ERROR);
+					throw new HTTPException('Not found', HTTP::NOT_FOUND);
 				}
 			} else {
 				// Login failed
@@ -115,10 +107,11 @@ try {
 			$user = new User($pdo, HMAC_KEY);
 
 			if ($user->loginWithToken($req->post) and $user->can('createNeed')) {
-				$needs = new Need($pdo);
-				$uuid = $needs->createFromUserInput($user, $req->post);
+				$needs = new NeedRequest();
+				$needs->setFromUserInput($req->post);
+				$needs->setUserFromUser($user);
 
-				if (isset($uuid)) {
+				if ($uuid = $needs->save($pdo)) {
 					Headers::contentType('application/json');
 					Headers::status(HTTP::CREATED);
 					echo json_encode(['uuid' => $uuid]);
@@ -166,10 +159,21 @@ try {
 		}
 	});
 
-	$api->on('DELTE', function(API $req): void
+	$api->on('DELETE', function(API $req): void
 	{
 		if ($req->get->has('token', 'uuid')) {
-			throw new HTTPException('Not yet implmented', HTTP::NOT_IMPLEMENTED);
+			$pdo = PDO::load();
+			$user = new User($pdo, HMAC_KEY);
+
+			if ($user->loginWithToken($req->get) and $user->can('deleteNeed')) {
+				if (NeedRequest::delete($pdo, $req->get->get('uuid'))) {
+					Headers::status(HTTP::NO_CONTENT);
+				} else {
+					throw new HTTPException('Not found', HTTP::NOT_FOUND);
+				}
+			} else {
+				throw new HTTPException('Permission denied', HTTP::FORBIDDEN);
+			}
 		} else {
 			throw new HTTPException('Missing token', HTTP::BAD_REQUEST);
 		}

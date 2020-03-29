@@ -75,6 +75,12 @@ abstract class Schema
 		$this->setFromObject(json_decode(json_encode($data)));
 	}
 
+	final protected static function _getPages(int $page = 1, int $count = 25): string
+	{
+		$offset = ($page - 1) * $count;
+		return "{$offset}, {$count}";
+	}
+
 	abstract public function setFromObject(object $data): void;
 
 	abstract public function save(PDO $pdo):? string;

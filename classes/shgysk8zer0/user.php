@@ -210,18 +210,9 @@ final class User implements JsonSerializable
 
 	final private function _getUserByUUID(string $uuid): bool
 	{
-		$sql = 'SELECT JSON_OBJECT(
-			"identifier", `users`.`identifier`,
-			"created", DATE_FORMAT(`users`.`created`, "%Y-%m-%dT%TZ"),
-			"updated", DATE_FORMAT(`users`.`updated`, "%Y-%m-%dT%TZ"),
-			"person", ' . Person::getSQL() .',
-			"role", ' . Role::getSQL() .'
-		) AS `json`
+		$sql = 'SELECT ' . static::getSQL() . ' AS `json`
 		FROM `' . self::TABLE . '`
-		LEFT OUTER JOIN `' . Person::TYPE . '` ON `' . self::TABLE . '`.`person` = `' . Person::TYPE . '`.`identifier`
-		LEFT OUTER JOIN `' . PostalAddress::TYPE .'` ON `' . Person::TYPE . '`.`address` = `' . PostalAddress::TYPE . '`.`identifier`
-		LEFT OUTER JOIN `' . ImageObject::TYPE .'` ON `' . Person::TYPE . '`.`image` = `' . ImageObject::TYPE . '`.`identifier`
-		LEFT OUTER JOIN `' . Role::TABLE . '` ON `' . self::TABLE . '`.`role` = `' . Role::TABLE .'`.`id`
+		' . join("\n", static::getJoins()) . '
 		WHERE `' . self::TABLE . '`.`identifier` = :uuid
 		LIMIT 1;';
 		$stm = $this->_pdo->prepare($sql);
@@ -233,6 +224,29 @@ final class User implements JsonSerializable
 		} else {
 			return false;
 		}
+	}
+
+	final public static function getSQL(): string
+	{
+		return 'JSON_OBJECT(
+			"identifier", `users`.`identifier`,
+			"created", DATE_FORMAT(`users`.`created`, "%Y-%m-%dT%TZ"),
+			"updated", DATE_FORMAT(`users`.`updated`, "%Y-%m-%dT%TZ"),
+			"person", ' . Person::getSQL() .',
+			"role", ' . Role::getSQL() .'
+		)';
+	}
+
+	final public static function getJoins(): array
+	{
+		return array_merge(
+			[
+				'LEFT OUTER JOIN `' . Person::TYPE . '` ON `' . self::TABLE . '`.`person` = `' . Person::TYPE . '`.`identifier`',
+				'LEFT OUTER JOIN `' . Role::TABLE . '` ON `' . self::TABLE . '`.`role` = `' . Role::TABLE .'`.`id`',
+
+			],
+			Person::getJoins()
+		);
 	}
 
 	final private function _generateToken(string $uuid): string

@@ -1,6 +1,6 @@
 <?php
 namespace Test;
-use \shgysk8zer0\{User};
+use \shgysk8zer0\{User, Person, NeedRequest};
 use \shgysk8zer0\PHPAPI\{API, PDO, Headers, HTTPException};
 use \shgysk8zer0\PHPAPI\Abstracts\{HTTPStatusCodes as HTTP};
 use \Throwable;
@@ -12,7 +12,6 @@ try {
 
 	$api->on('GET', function(API $req): void
 	{
-		$pdo = PDO::load();
 		Headers::contentType('application/json');
 		echo json_encode($req);
 	});

@@ -189,4 +189,9 @@ class PostalAddress extends Thing implements Interfaces\PostalAddress
 			"addressCountry", `PostalAddress`.`addressCountry`
 		)';
 	}
+
+	public static function getJoins(): array
+	{
+		return [];
+	}
 }
