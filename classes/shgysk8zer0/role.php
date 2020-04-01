@@ -6,12 +6,17 @@ final class Role implements \JSONSerializable
 	public const TABLE = 'roles';
 	private const PERMS = [
 		'createNeed',
+		'adminCreateNeed',
 		'editNeed',
 		'listNeed',
 		'deleteNeed',
 		'listUser',
 		'editUser',
 		'deleteUser',
+		'createPerson',
+		'editPerson',
+		'listPerson',
+		'deletePerson',
 		'debug',
 	];
 

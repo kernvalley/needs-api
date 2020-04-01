@@ -4,6 +4,7 @@ use \shgysk8zer0\{User};
 use \shgysk8zer0\PHPAPI\{API, PDO, Headers, HTTPException};
 use \shgysk8zer0\PHPAPI\Abstracts\{HTTPStatusCodes as HTTP};
 use \Throwable;
+use const \Consts\{VOLUNTEER_ROLES};
 
 require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'autoloader.php';
 
@@ -24,7 +25,7 @@ try {
 			LEFT OUTER JOIN `ImageObject` ON `Person`.`image` = `ImageObject`.`identifier`
 			LEFT OUTER JOIN `roles` ON `users`.`role` = `roles`.`id`
 			WHERE `Person`.`identifier` = :uuid
-			AND `users`.`role` = 2 OR `users`.`role` = 1
+			AND `users`.`role` IN (' . join(', ', VOLUNTEER_ROLES). ')
 			LIMIT 1;');
 
 			if ($stm->execute(['uuid' => $req->get->get('uuid')]) and $person = $stm->fetchObject()) {
@@ -42,7 +43,7 @@ try {
 			LEFT OUTER JOIN `Person` ON `users`.`person` = `Person`.`identifier`
 			LEFT OUTER JOIN `ImageObject` ON `Person`.`image` = `ImageObject`.`identifier`
 			LEFT OUTER JOIN `roles` ON `users`.`role` = `roles`.`id`
-			WHERE `users`.`role` = 1 OR `users`.`role` = 2;');
+			WHERE `users`.`role` IN (' . join(', ', VOLUNTEER_ROLES). ');');
 
 			if ($stm->execute() and $people = $stm->fetchAll(PDO::FETCH_CLASS)) {
 				Headers::contentType('application/json');

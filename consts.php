@@ -19,6 +19,14 @@ const AUTOLOADER        = 'spl_autoload';
 const AUTOLOAD_EXTS     = [
 	'.php',
 ];
+
+const VOLUNTEER_ROLES = [
+	1,
+	2,
+	5,
+	6,
+];
+
 const INCLUDE_PATH      = [
 	BASE . 'classes' . DIRECTORY_SEPARATOR,
 ];

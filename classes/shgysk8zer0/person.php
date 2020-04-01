@@ -72,7 +72,6 @@ class Person extends Thing
 				'telephone' => $this->getTelephone(),
 				'address'   => $this->getAddress() !== null ? $this->getAddress()->save($pdo) : null,
 			]) and $stm->rowCount() !== 0) {
-				header('X-Person-UUID: ' . $this->getIdentifier() ?? 'null');
 				return $this->getIdentifier();
 			} else {
 				return null;
@@ -152,6 +151,17 @@ class Person extends Thing
 
 		if ($stm->execute(['uuid' => $uuid]) and $result = $stm->fetchObject()) {
 			return new self(json_decode($result->json));
+		} else {
+			return null;
+		}
+	}
+
+	final public static function getIdentifierFromName(PDO $pdo, string $name):? string
+	{
+		$stm = $pdo->prepare('SELECT `identifier` FROM `Person` WHERE `name` = :name LIMIT 1;');
+
+		if ($stm->execute(['name' => $name]) and $person = $stm->fetchObject()) {
+			return $person->identifier;
 		} else {
 			return null;
 		}

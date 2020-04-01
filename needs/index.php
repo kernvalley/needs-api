@@ -56,6 +56,7 @@ try {
 			// Assign user
 			$pdo = PDO::load();
 			$user = new User($pdo, HMAC_KEY);
+
 			if ($user->loginWithToken($req->post) and $user->can('editNeed')) {
 				// @TODO Get `Person`.`identifier`
 				$need = NeedRequest::getFromIdentifier($pdo, $req->post->get('uuid'));
@@ -100,6 +101,30 @@ try {
 			} else {
 				// Login failed
 				throw new HTTPException('Token not valid or permission denied', HTTP::FORBIDDEN);
+			}
+		} elseif ($req->post->has('token', 'user', 'tags', 'title', 'description')) {
+			// Admin creating request
+			$pdo = PDO::load();
+			$user = new User($pdo, HMAC_KEY);
+
+			if ($user->loginWithToken($req->post) and $user->can('adminCreateNeed')) {
+				if ($person = Person::getIdentifierFromName($pdo, $req->post->get('user'))) {
+					$needs = new NeedRequest();
+					$needs->setFromUserInput($req->post);
+					$needs->setUserFromUser($user);
+
+					if ($uuid = $needs->save($pdo)) {
+						Headers::contentType('application/json');
+						Headers::status(HTTP::CREATED);
+						echo json_encode(['uuid' => $uuid]);
+					} else {
+						throw new HTTPException('Error creating requet', HTTP::INTERNAL_SERVER_ERROR);
+					}
+				} else {
+					throw new HTTPExeption('You do not have permission for that', HTTP::FORBIDDEN);
+				}
+			} else {
+				throw new HTTPException('Login rejected or permission denied', HTTP::FORBIDDEN);
 			}
 		} elseif ($req->post->has('token', 'tags', 'title', 'description')) {
 			// Creating request
@@ -157,17 +182,19 @@ try {
 			$pdo = PDO::load();
 			$user = new User($pdo, HMAC_KEY);
 
-			if ($user->loginWithToken($req->get) and $user->can('deleteNeed')) {
+			if (! $user->loginWithToken($req->get)) {
+				throw new HTTPException('Token invalid or expired', HTTP::UNAUTHORIZED);
+			} elseif (! $user->can('deleteNeed')) {
+				throw new HTTPException('Permission denied', HTTP::FORBIDDEN);
+			} else {
 				if (NeedRequest::delete($pdo, $req->get->get('uuid'))) {
 					Headers::status(HTTP::NO_CONTENT);
 				} else {
 					throw new HTTPException('Not found', HTTP::NOT_FOUND);
 				}
-			} else {
-				throw new HTTPException('Permission denied', HTTP::FORBIDDEN);
 			}
 		} else {
-			throw new HTTPException('Missing token', HTTP::BAD_REQUEST);
+			throw new HTTPException('Missing token or UUID', HTTP::BAD_REQUEST);
 		}
 	});
 
@@ -176,13 +203,4 @@ try {
 	Headers::status($e->getCode());
 	Headers::contentType('application/json');
 	echo json_encode($e);
-} catch(Throwable $e) {
-	Headers::status(HTTP::INTERNAL_SERVER_ERROR);
-	Headers::contentType('application/json');
-	echo json_encode([
-		'message' => $e->getMessage(),
-		'file'    => $e->getFile(),
-		'line'    => $e->getLine(),
-		'trace'   => $e->getTrace(),
-	]);
 }

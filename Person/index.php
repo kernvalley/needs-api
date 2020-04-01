@@ -19,7 +19,7 @@ try {
 
 			if (! $user->loginWithToken($req->get)) {
 				throw new HTTPException('Invalid or expired token', HTTP::UNAUTHORIZED);
-			} elseif (! $user->can('listUser')) {
+			} elseif (! $user->can('listPerson')) {
 				throw new HTTPException('Permission denied', HTTP::FORBIDDEN);
 			} elseif ($req->get->has('uuid')) {
 				if ($person = Person::getFromIdentifier($pdo, $req->get->get('uuid'))) {
@@ -68,7 +68,7 @@ try {
 
 			if (! $user->loginWithToken($req->post)) {
 				throw new HTTPException('Invalid or expired token', HTTP::UNAUTHORIZED);
-			} elseif (! $user->can('debug')) {
+			} elseif (! $user->can('createPerson')) {
 				throw new HTTPException('Permission denied', HTTP::FORBIDDEN);
 			} else {
 				$person = new Person();
@@ -106,6 +106,8 @@ try {
 
 			if (! $user->loginWithToken($req->get)) {
 				throw new HTTPException('Invalid or expired token', HTTP::UNAUTHORIZED);
+			} elseif (! $user->can('deletePerson')) {
+				throw new HTTPException('You do not have permission', HTTP::FORBIDDEN);
 			} else {
 				// Need to also delete `users`, `PostalAddress`, & `ImageObject`
 				throw new HTTPException('Not implmeented', HTTP::NOT_IMPLEMENTED);

@@ -269,7 +269,7 @@ final class NeedRequest implements JSONSerializable
 		$stm = $pdo->prepare('SELECT ' . static::getSQL(). ' AS `json`
 			FROM `' . self::TABLE . '`
 			' . join("\n", static::getJoins()) .'
-			ORDER BY `created` DESC
+			ORDER BY `created` ASC
 			LIMIT ' . static::_getPages($page, $limit) .';');
 
 		if ($stm->execute(['status' => $status]) and $results = $stm->fetchAll(PDO::FETCH_CLASS)) {
@@ -296,7 +296,8 @@ final class NeedRequest implements JSONSerializable
 			FROM `' . self::TABLE . '`
 			' . join("\n", static::getJoins()) .'
 			WHERE `' . static::TABLE . '`.`assigned` = :person
-			OR `' . static::TABLE .'`.`assigned` IS NULL
+			OR `' . static::TABLE . '`.`assigned` IS NULL
+			ORDER BY `' . self::TABLE . '`.`created` ASC
 			LIMIT ' . static::_getPages($page, $limit) .';');
 
 		if ($stm->execute(['person' => $assignee->getIdentifier()]) and $results = $stm->fetchAll(PDO::FETCH_CLASS)) {
