@@ -1,0 +1,9 @@
+{
+    "username": "needsapi",
+    "password": "BiKncmumVm5xG9iGfEDeznEbrVZtD7",
+    "type": "mysql",
+    "host": "localhost",
+    "port": 3306,
+    "database": "needsapi",
+    "charset": "UTF8"
+}

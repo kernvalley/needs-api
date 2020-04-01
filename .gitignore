@@ -1,5 +1,8 @@
 *.sql
+!db.sql
 /img/icons.svg
+/uploads/*
+!/uploads/.gitkeep
 *.min.*
 *.map
 ~*
@@ -68,4 +71,5 @@ typings/
 .next
 
 # Local Netlify folder
-.netlify
+.netlifydata/creds.json
+data/hmac.key
