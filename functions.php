@@ -1,8 +1,10 @@
 <?php
 
 namespace Functions;
-use const \Consts\{DEBUG, ERROR_LOG, UPLOADS_DIR, BASE};
+use const \Consts\{DEBUG, ERROR_LOG, UPLOADS_DIR, BASE, EMAIL_CREDS_FILE};
 use \shgysk8zer0\PHPAPI\{PDO, User, JSONFILE, Headers, HTTPException, Request, URL};
+use PHPMailer\PHPMailer\{PHPMailer, SMTP, Exception as MailException};
+use \shgysk8zer0\{Person, EmailCredentials};
 use \StdClass;
 use \DateTime;
 use \Throwable;
@@ -18,6 +20,31 @@ function is_pwned(string $pwd): bool
 
 	if ($resp->ok) {
 		return strpos($resp->body, "{$rest}:") !== false;
+	} else {
+		return false;
+	}
+}
+
+function email(EmailCredentials $creds, Person $person, ?Person $from = null, string $subject, string $body): bool
+{
+	$mail = new PHPMailer(true);
+
+	if ($creds->valid() and $creds->loginToMailer($mail)) {
+		try {
+			if (isset($from)) {
+				$mail->setFrom($from->getEmail(), $from->getName());
+			} else {
+				$mail->setFrom($creds->getUsername(), $creds->getName());
+			}
+			$mail->addAddress($person->getEmail(), $person->getName());
+			$mail->isHTML(true);                                             // Set email format to HTML
+			$mail->Subject = $subject;
+			$mail->Body    = $body;
+			$mail->send();
+			return true;
+		} catch (MailException $e) {
+			return false;
+		}
 	} else {
 		return false;
 	}

@@ -1,5 +1,6 @@
 <?php
 namespace autoloader;
+require 'vendor/autoload.php';
 
 use const \Consts\{
 	AUTOLOADER,
