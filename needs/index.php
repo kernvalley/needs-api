@@ -21,6 +21,10 @@ try {
 
 			if ($user->loginWithToken($req->get) and $user->can('listNeed')) {
 				if ($need = NeedRequest::getFromIdentifier($pdo, $req->get->get('uuid'))) {
+					$need->setIdentifier($req->get->get('uuid'));
+					header('X-REQUEST-UUID: ', $need->getIdentifier());
+					$items = $need->fetchItems($pdo, $req->get->get('offset'));
+					$need->setItems($items);
 					Headers::contentType('application/json');
 					exit(json_encode($need));
 				} else {
@@ -112,12 +116,33 @@ try {
 					$needs = new NeedRequest();
 					$needs->setFromUserInput($req->post);
 					$needs->setUserFromUser($user);
+					$pdo->beginTransaction();
 
-					if ($uuid = $needs->save($pdo)) {
-						Headers::contentType('application/json');
-						Headers::status(HTTP::CREATED);
-						echo json_encode(['uuid' => $uuid]);
-					} else {
+				if ($uuid = $needs->save($pdo)) {
+					$item_stm = $pdo->prepare('INSERT INTO `items` (
+						`request`,
+						`quantity`,
+						`item`
+					) VALUES (
+						:request,
+						:quantity,
+						:item);');
+
+					foreach ($req->post->get('items') as $item) {
+						if (! $item_stm->execute([
+							'request'  => $uuid,
+							'quantity' => $item->quantity,
+							'item'     => $item->item,
+						]) or $item_stm->rowCount() !== 1) {
+							throw new HTTPException('Error saving request item', HTTP::INTERNAL_SERVER_ERROR);
+						}
+					}
+
+					$pdo->commit();
+					Headers::contentType('application/json');
+					Headers::status(HTTP::CREATED);
+					echo json_encode(['uuid' => $uuid]);
+				} else {
 						throw new HTTPException('Error creating requet', HTTP::INTERNAL_SERVER_ERROR);
 					}
 				} else {
@@ -126,7 +151,7 @@ try {
 			} else {
 				throw new HTTPException('Login rejected or permission denied', HTTP::FORBIDDEN);
 			}
-		} elseif ($req->post->has('token', 'tags', 'title', 'description')) {
+		} elseif ($req->post->has('token', 'tags', 'title', 'description', 'items')) {
 			// Creating request
 			$pdo = PDO::load();
 			$user = new User($pdo, HMAC_KEY);
@@ -135,8 +160,29 @@ try {
 				$needs = new NeedRequest();
 				$needs->setFromUserInput($req->post);
 				$needs->setUserFromUser($user);
+				$pdo->beginTransaction();
 
 				if ($uuid = $needs->save($pdo)) {
+					$item_stm = $pdo->prepare('INSERT INTO `items` (
+						`request`,
+						`quantity`,
+						`item`
+					) VALUES (
+						:request,
+						:quantity,
+						:item);');
+
+					foreach ($req->post->get('items') as $item) {
+						if (! $item_stm->execute([
+							'request'  => $uuid,
+							'quantity' => $item->quantity,
+							'item'     => $item->item,
+						]) or $item_stm->rowCount() !== 1) {
+							throw new HTTPException('Error saving request item', HTTP::INTERNAL_SERVER_ERROR);
+						}
+					}
+
+					$pdo->commit();
 					Headers::contentType('application/json');
 					Headers::status(HTTP::CREATED);
 					echo json_encode(['uuid' => $uuid]);
