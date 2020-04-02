@@ -12,6 +12,8 @@ class RequestItem implements JSONSerializable
 
 	private $_qty        = null;
 
+	private $_items      = null;
+
 	public function toString(): string
 	{
 		return json_encode($this);
@@ -54,6 +56,33 @@ class RequestItem implements JSONSerializable
 	final public function setText(?string $val): void
 	{
 		$this->_text = $val;
+	}
+
+	final public function getItems():? array
+	{
+		return $this->items;
+	}
+
+	final public function setItems(... object $val): void
+	{
+		$this->_items = $val;
+	}
+
+	final public function fetchItems(PDO $pdo, int $offset = 0): array
+	{
+		$stm = $pdo->prepare(sprintf('SELECT `id`,
+			`quantity`,
+			`item`,
+			DATE_FORMAT(`created`, "%s") AS `created`
+			FROM `items`
+			WHERE `request` = :uuid
+			LIMIT %d, 50', '%Y-%m-%dT%TZ', $offset));
+
+		if ($stm->execute(['request' => $this->getIdentifier()]) and $items = $stm->fetchAll(PDO::FETCH_CLASS)) {
+			return $items;
+		} else {
+			return [];
+		}
 	}
 
 	final public function valid(): bool

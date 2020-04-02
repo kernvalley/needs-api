@@ -30,6 +30,8 @@ final class NeedRequest implements JSONSerializable
 
 	private $_updated = null;
 
+	private $_items = [];
+
 	final public function __construct(?object $data = null)
 	{
 		if (isset($data)) {
@@ -49,6 +51,7 @@ final class NeedRequest implements JSONSerializable
 			'assigned'    => $this->getAssignee(),
 			'created'     => $this->getCreated(),
 			'updated'     => $this->getUpdated(),
+			'items'       => $this->getItems(),
 		];
 	}
 
@@ -147,6 +150,41 @@ final class NeedRequest implements JSONSerializable
 	final public function setUserFromUser(?User $val): void
 	{
 		$this->setUser($val->getPerson());
+	}
+
+	final public function getItems():? array
+	{
+		return $this->_items;
+	}
+
+	final public function setItems(?array $val): void
+	{
+		$this->_items = $val;
+	}
+
+	final public function fetchItems(PDO $pdo, ?int $offset = 0): array
+	{
+		if (is_null($offset)) {
+			$offset = 0;
+		}
+		$stm = $pdo->prepare('SELECT `id`,
+			`quantity`,
+			`item`,
+			DATE_FORMAT(`created`, "%Y-%m-%dT%TZ") AS `created`
+			FROM `items`
+			WHERE `request` = :uuid
+			LIMIT ' . $offset . ', 50;');
+
+		if ($stm->execute(['uuid' => $this->getIdentifier()]) and $items = $stm->fetchAll(PDO::FETCH_CLASS)) {
+			return array_map(function(object $item): object
+			{
+				$item->id = intval($item->id);
+				$item->quantity = intval($item->quantity);
+				return $item;
+			}, $items);
+		} else {
+			return [];
+		}
 	}
 
 	final public function save(PDO $pdo):? string
@@ -278,7 +316,7 @@ final class NeedRequest implements JSONSerializable
 				return new self(json_decode($result->json));
 			}, $results);
 		} else {
-			return null;
+			return [];
 		}
 	}
 
@@ -306,7 +344,7 @@ final class NeedRequest implements JSONSerializable
 				return new self(json_decode($result->json));
 			}, $results);
 		} else {
-			return null;
+			return [];
 		}
 	}
 
