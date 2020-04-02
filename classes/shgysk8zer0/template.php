@@ -3,6 +3,8 @@ namespace shgysk8zer0;
 
 final class Template
 {
+	public const DELIM = '%';
+
 	private $_content = '';
 
 	private $_fname = null;
@@ -39,7 +41,7 @@ final class Template
 	{
 		$keys = array_map(function(string $key): string
 		{
-			return '%' . strtoupper($key) . '%';
+			return self::DELIM . strtoupper($key) . self::DELIM;
 		}, array_keys($this->_data));
 
 		return str_replace($keys, array_values($this->_data), $this->_content);
