@@ -74,3 +74,6 @@ typings/
 .netlifydata/creds.json
 data/hmac.key
 data/creds.json
+
+/vendor/
+data/email.json
