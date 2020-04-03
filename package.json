@@ -15,7 +15,10 @@
 	},
 	"private": true,
 	"scripts": {
-		"preinstall": "git submodule update --init --recursive",
+		"preinstall": "npm run update:submodules",
+		"postinstall": "npm run update:composer",
+		"update:submodules": "git submodule update --init --recursive",
+		"update:composer": "if [ -f composer.lock ]; then composer install; fi",
 		"start": "php -S ${npm_package_config_host}:${npm_package_config_port}",
 		"test": "php lint.php"
 	}
