@@ -34,11 +34,6 @@ class Message implements JSONSerializable
 		}
 	}
 
-	final public function __toString(): string
-	{
-		return json_encode($this);
-	}
-
 	final public function __debugInfo(): array
 	{
 		return [
@@ -278,7 +273,6 @@ class Message implements JSONSerializable
 			"opened", `opened` = "1"
 		) AS `json`
 		FROM `' . self::TABLE . '`
-		ORDER BY `created` ASC
 		LIMIT ' . $offset . ', ' . $count . ';');
 
 		if ($stm->execute() and $results = $stm->fetchAll(PDO::FETCH_CLASS)) {

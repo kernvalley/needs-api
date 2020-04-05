@@ -17,6 +17,8 @@ final class Role implements \JSONSerializable
 		'editPerson',
 		'listPerson',
 		'deletePerson',
+		'viewMessage',
+		'deleteMessage',
 		'debug',
 	];
 
