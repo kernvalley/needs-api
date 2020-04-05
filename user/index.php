@@ -13,27 +13,45 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'autoloader.php';
 
 try {
 	$api = new API();
-	Files::setAllowedTypes('image/jpeg', 'image/png');
 
 	$api->on('GET', function(API $req): void
 	{
-		if (! $req->get->has('token', 'uuid')) {
-			throw new HTTPException('Missing UUID or token', HTTP::BAD_REQUEST);
-		} else {
-			$pdo = PDO::load();
-			$user = new User($pdo, HMAC_KEY);
+		$pdo = PDO::load();
+		$user = new User($pdo, HMAC_KEY);
 
-			if ($user->loginWithToken($req->get) and $user->can('listUser')) {
+		if ($req->get->has('token', 'uuid')) {
+			// Get individual user
+			if (! $user->loginWithToken($req->get)) {
+				throw new HTTPException('Invalid or expired token', HTTP::UNAUTHROIZED);
+			} elseif (! $user->can('listUser')) {
+				throw new HTTPException('You do not have permission for that', HTTP::FORBIDDEN);
+			} elseif ($match = User::getFromIdentifier($pdo, $req->get->get('uuid', false))) {
 				Headers::contentType('application/json');
-				echo json_encode($user);
+				echo json_encode($match);
 			} else {
-				throw new HTTPException('Cannot query users', HTTP::UNAUTHORIZED);
+				throw new HTTPException('User not found', HTTP::NOT_FOUND);
 			}
+		} elseif ($req->get->has('token')) {
+			// List Users
+			if (! $user->loginWithToken($req->get)) {
+				throw new HTTPException('Invalid or expired token', HTTP::UNAUTHROIZED);
+			} elseif (! $user->can('listUser')) {
+				throw new HTTPException('You do not have permission for that', HTTP::FORBIDDEN);
+			} elseif ($users = User::fetchAll($pdo, $req->get->get('offset', false, 0))) {
+				Headers::contentType('application/json');
+				echo json_encode($users);
+			} else {
+				throw new HTTPException('No users found', HTTP::NOT_FOUND);
+			}
+		} else {
+			throw new HTTPException('Invalid request', HTTP::BAD_REQUEST);
 		}
 	});
 
 	$api->on('POST', function(API $req): void
 	{
+		Files::setAllowedTypes('image/jpeg', 'image/png');
+
 		if ($req->post->has('password', 'person') and $req->post->get('person')) {
 			// This is a registration
 			$pdo = PDO::load();
@@ -77,6 +95,31 @@ try {
 						@unlink($fname);
 					}
 					throw new HTTPException('Error uploading or saving image', HTTP::INTERNAL_SERVER_ERROR);
+				}
+			}
+		} elseif ($req->post->has('token', 'user', 'role')) {
+			// Updating User role
+			$pdo = PDO::load();
+			$user = new User($pdo, HMAC_KEY);
+
+			if (! $user->loginWithToken($req->post)) {
+				throw new HTTPException('Token invalid or expired', HTTP::UNAUTHORIZED);
+			} elseif ($user->getIdentifier() === $req->post->get('user')) {
+				throw new HTTPException('You are not allowed to change your own role', HTTP::FORBIDDEN);
+			} elseif (! $user->can('editUser')) {
+				throw new HTTPException('You do not have permission to do that', HTTP::FORBIDDEN);
+			} elseif (! $other_user = User::getFromIdentifier($pdo, $req->post->get('user'))) {
+				throw new HTTPException('User not found', HTTP::NOT_FOUND);
+			} else {
+				$stm = $pdo->prepare('Update `users` SET `role` = :role WHERE `identifier` = :uuid LIMIT 1;');
+
+				if ($stm->execute([
+					'role' => $req->post->get('role', false),
+					'uuid' => $other_user->identifier,
+				]) and $stm->rowCount() === 1) {
+					Headers::status(HTTP::NO_CONTENT);
+				} else {
+					throw new HTTPException('Error updating user', HTTP::INTERNAL_SERVER_ERROR);
 				}
 			}
 		} else {

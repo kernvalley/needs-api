@@ -266,6 +266,57 @@ final class User implements JsonSerializable
 		);
 	}
 
+	public static function getFromIdentifier(PDO $pdo, string $uuid):? object
+	{
+		$stm = $pdo->prepare('SELECT ' . static::getSQL() .' AS `json`
+			FROM ' . static::TABLE .'
+			' . join("\n", static::getJoins()) .'
+			WHERE `' . static::TABLE . '`.`identifier` = :uuid
+			LIMIT 1;');
+
+		if ($stm->execute(['uuid' => $uuid]) and $result = $stm->fetchObject()) {
+			$user = json_decode($result->json);
+			return $user;
+		} else {
+			return null;
+		}
+	}
+
+	public static function fetchAll(PDO $pdo, int $offset = 0, int $count = 25): array
+	{
+		$stm = $pdo->query('SELECT `users`.`identifier`,
+			JSON_OBJECT(
+				"identifier", `Person`.`identifier`,
+				"name", `Person`.`name`,
+				"image", JSON_OBJECT(
+					"identifier", `ImageObject`.`identifier`,
+					"url", `ImageObject`.`url`,
+					"width", `ImageObject`.`width`,
+					"height", `ImageObject`.`height`
+				)
+			) AS `person`,
+			JSON_OBJECT(
+				"id", `roles`.`id`,
+				"name", `roles`.`name`
+			) AS `role`
+		FROM `users`
+		LEFT OUTER JOIN `Person` ON `users`.`person` = `Person`.`identifier`
+		LEFT OUTER JOIN `roles` ON `users`.`role` = `roles`.`id`
+		LEFT OUTER JOIN `ImageObject` ON `Person`.`image` = `ImageObject`.`identifier`
+		LIMIT ' . $offset . ', ' . $count . ';');
+
+		if ($stm->execute() and $users = $stm->fetchAll(PDO::FETCH_CLASS)) {
+			return array_map(function(object $user): object
+			{
+				$user->person = json_decode($user->person);
+				$user->role = json_decode($user->role);
+				return $user;
+			}, $users);
+		} else {
+			return [];
+		}
+	}
+
 	final private function _generateToken(string $uuid): string
 	{
 		$now = new DateTimeImmutable();
@@ -282,7 +333,6 @@ final class User implements JsonSerializable
 
 	final private function _checkToken(string $token):? bool
 	{
-		header('Content-Type: application/json');
 		try {
 			$data = json_decode(base64_decode($token));
 			if (@is_object($data) and isset($data->user, $data->generated, $data->expires, $data->hmac)) {

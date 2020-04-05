@@ -1,9 +1,12 @@
 <?php
 namespace shgysk8zer0;
 
+use \PDO;
+
 final class Role implements \JSONSerializable
 {
 	public const TABLE = 'roles';
+
 	private const PERMS = [
 		'createNeed',
 		'adminCreateNeed',
@@ -85,5 +88,20 @@ final class Role implements \JSONSerializable
 			return sprintf('"%s", `%s`.`%s` = 1', $perm, self::TABLE, $perm);
 		}, self::PERMS);
 		return 'JSON_OBJECT(' . join(",\n", $base) . ', "permissions", JSON_OBJECT(' . join(",\n", $perms ) .'))';
+	}
+
+	final public static function fetchAll(PDO $pdo): array
+	{
+		$stm = $pdo->query('SELECT `id`, `name` FROM `roles`;');
+
+		if ($stm->execute() and $roles = $stm->fetchAll(PDO::FETCH_CLASS)) {
+			return array_map(function(object $role): object
+			{
+				$role->id = intval($role->id);
+				return $role;
+			}, $roles);
+		} else {
+			return [];
+		}
 	}
 }

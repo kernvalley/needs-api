@@ -33,13 +33,4 @@ try {
 	Headers::status($e->getCode());
 	Headers::contentType('application/json');
 	echo json_encode($e);
-} catch(Throwable $e) {
-	Headers::status(HTTP::INTERNAL_SERVER_ERROR);
-	Headers::contentType('application/json');
-	echo json_encode([
-		'message' => $e->getMessage(),
-		'file'    => $e->getFile(),
-		'line'    => $e->getLine(),
-		'trace'   => $e->getTrace(),
-	]);
 }
