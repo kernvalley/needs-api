@@ -21,8 +21,8 @@ try {
 
 			if ($user->loginWithToken($req->get) and $user->can('listNeed')) {
 				if ($need = NeedRequest::getFromIdentifier($pdo, $req->get->get('uuid'))) {
-					$need->setIdentifier($req->get->get('uuid'));
-					header('X-REQUEST-UUID: ', $need->getIdentifier());
+					// $need->setIdentifier($req->get->get('uuid'));
+					$need->setAttachments($need->fetchAttachments($pdo));
 					$items = $need->fetchItems($pdo, $req->get->get('offset'));
 					$need->setItems($items);
 					Headers::contentType('application/json');
@@ -32,6 +32,20 @@ try {
 				}
 			} else {
 				throw new HTTPException('Permission not granted', HTTP::FORBIDDEN);
+			}
+		} elseif ($req->get->has('token', 'attachments')) {
+			$pdo = PDO::load();
+			$user = new User($pdo, HMAC_KEY);
+
+			if (! $user->loginWithToken($req->get)) {
+				throw new HTTPException('Token invalid or expired', HTTP::UNAUTHORIZED);
+			} elseif (! $user->can('listNeed')) {
+				throw new HTTPException('You do not have permission to do that', HTTP::FORBIDDEN);
+			} elseif (! $need = NeedRequest::getFromIdentifier($pdo, $req->get->get('attachments'))) {
+				throw new HTTPException('Not found', HTTP::NOT_FOUND);
+			} else {
+				Headers::contentType('application/json');
+				echo json_encode($need->fetchAttachments($pdo, $req->get->get('offset', false, 0)));
 			}
 		} elseif ($req->get->has('token')) {
 			$pdo = PDO::load();
@@ -106,7 +120,7 @@ try {
 				// Login failed
 				throw new HTTPException('Token not valid or permission denied', HTTP::FORBIDDEN);
 			}
-		} elseif ($req->post->has('token', 'user', 'tags', 'title', 'description')) {
+		} elseif ($req->post->has('token', 'user', 'tags', 'title', 'description', 'items')) {
 			// Admin creating request
 			$pdo = PDO::load();
 			$user = new User($pdo, HMAC_KEY);
@@ -206,7 +220,7 @@ try {
 
 				if (file_exists($fname)) {
 					throw new HTTPException('File already uploaded', HTTP::CONFLICT);
-				} elseif ($result =$need->attach($pdo, $req->files->upload, $fname, $user)) {
+				} elseif ($result = $need->attach($pdo, $req->files->upload, $fname, $user)) {
 					Headers::status(HTTP::CREATED);
 					$pdo->commit();
 					echo json_encode(['uuid' => $result]);
@@ -249,4 +263,13 @@ try {
 	Headers::status($e->getCode());
 	Headers::contentType('application/json');
 	echo json_encode($e);
+} catch (Throwable $e) {
+	http_response_code(500);
+	header('Content-Type: appliocation/json');
+	echo json_encode(['error' => [
+		'message' => $e->getMessage(),
+		'file'    => $e->getFile(),
+		'line'    => $e->getLine(),
+		'trace'   => $e->getTrace(),
+	]]);
 }
