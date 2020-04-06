@@ -43,7 +43,7 @@ class RequestItem implements JSONSerializable
 		return $this->_qty;
 	}
 
-	final public functoin setQuantity(?int $val): void
+	final public function setQuantity(?int $val): void
 	{
 		$this->_qty = $val;
 	}
@@ -63,7 +63,7 @@ class RequestItem implements JSONSerializable
 		return $this->items;
 	}
 
-	final public function setItems(... object $val): void
+	final public function setItems(object... $val): void
 	{
 		$this->_items = $val;
 	}
