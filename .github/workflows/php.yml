@@ -20,5 +20,6 @@ jobs:
     - name: PHP Lint
       run: |
         pwd
+        if [ -f composer.lock ]; then composer install; fi
         git submodule update --init --recursive
         php ./lint.php
