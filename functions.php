@@ -25,6 +25,35 @@ function is_pwned(string $pwd): bool
 	}
 }
 
+function hmac_verify(string $data, string $hmac_key, $algo = 'sha2-256', string $key = 'hmac'):? object
+{
+	if ($obj = @json_decode(@base64_decode($data)) and isset($obj->{$key}) and is_string($obj->{$key})) {
+		$hmac = $obj->{$key};
+		unset($obj->{$key});
+
+		$hash = hash_hmac($algo, json_encode($obj), $hmac_key);
+		if (isset($hash) and hash_equals($hash, $hmac)) {
+			return $obj;
+		} else {
+			return null;
+		}
+	} else {
+		return null;
+	}
+}
+
+function hmac_sign_array(array $data, string $hmac_key, string $algo = 'sha3-256', string $key = 'hmac'):? string
+{
+	$json = json_encode($data);
+
+	if ($hmac = hash_hmac($algo, $json, $hmac_key)) {
+		$data[$key] = $hmac;
+		return base64_encode(json_encode($data));
+	} else {
+		return null;
+	}
+}
+
 function email(EmailCredentials $creds, Person $person, ?Person $from = null, string $subject, string $body): bool
 {
 	$mail = new PHPMailer(true);

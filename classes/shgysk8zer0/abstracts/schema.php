@@ -41,7 +41,7 @@ abstract class Schema
 		}
 	}
 
-	final public function __unset(string $key): bool
+	final public function __unset(string $key): void
 	{
 		$method = sprintf('set%s', ucfirst($key));
 

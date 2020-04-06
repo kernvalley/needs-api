@@ -15,6 +15,8 @@ final class User implements JsonSerializable
 {
 	private const TABLE = 'users';
 
+	private const TOKEN_TYPE = 'login';
+
 	private const _PASSWORD_ALGO = PASSWORD_DEFAULT;
 
 	private const _PASSWORD_OPTS = [
@@ -282,6 +284,19 @@ final class User implements JsonSerializable
 		}
 	}
 
+	public static function resetPasswordforPerson(PDO $pdo, Person $person, string $password): bool
+	{
+		$stm = $pdo->prepare('UPDATE `' . self::TABLE .'`
+		SET `password` = :hash
+		WHERE `person` = :person
+		LIMIT 1;');
+
+		return $person->getIdentifier() !== null && $stm->execute([
+			'person' => $person->getIdentifier(),
+			'hash' => password_hash($password, self::_PASSWORD_ALGO, self::_PASSWORD_OPTS),
+		]) and $stm->rowCount() === 1;
+	}
+
 	public static function fetchAll(PDO $pdo, int $offset = 0, int $count = 25): array
 	{
 		$stm = $pdo->query('SELECT `users`.`identifier`,
@@ -317,6 +332,25 @@ final class User implements JsonSerializable
 		}
 	}
 
+	public static function getPersonFromEmail(PDO $pdo, string $email):? Person
+	{
+		if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+			return null;
+		} else {
+			$stm = $pdo->prepare('SELECT `users`.`person` AS `person`
+			FROM `users`
+			LEFT OUTER JOIN `Person` ON `users`.`person` = `Person`.`identifier`
+			WHERE `Person`.`email` = :email
+			LIMIT 1;');
+
+			if ($stm->execute(['email' => $email]) and $result = $stm->fetchObject()) {
+				return Person::getFromIdentifier($pdo, $result->person);
+			} else {
+				return null;
+			}
+		}
+	}
+
 	final private function _generateToken(string $uuid): string
 	{
 		$now = new DateTimeImmutable();
@@ -325,6 +359,7 @@ final class User implements JsonSerializable
 			'user'      => $this->getUUID(),
 			'generated' => $now->format(DateTimeImmutable::W3C),
 			'expires'   => $expires->format(DateTimeImmutable::W3C),
+			'type'      => self::TOKEN_TYPE,
 		];
 
 		$data['hmac'] = hash_hmac(self::HASH_ALGO, json_encode($data), $this->_key);
@@ -335,12 +370,14 @@ final class User implements JsonSerializable
 	{
 		try {
 			$data = json_decode(base64_decode($token));
-			if (@is_object($data) and isset($data->user, $data->generated, $data->expires, $data->hmac)) {
+			if (@is_object($data) and isset($data->user, $data->generated, $data->expires, $data->hmac, $data->type)) {
 				$now = new DateTimeImmutable();
 				$generated = new DateTimeImmutable($data->generated);
 				$expires = new DateTimeImmutable($data->expires);
 
-				if ($now >= $generated && $now <= $expires) {
+				if ($data->type !== self::TOKEN_TYPE) {
+					return false;
+				} elseif ($now >= $generated && $now <= $expires) {
 					$hmac = $data->hmac;
 					unset($data->hmac);
 					$expected = hash_hmac(self::HASH_ALGO, json_encode($data), $this->_key);
