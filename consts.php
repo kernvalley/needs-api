@@ -1,7 +1,10 @@
 <?php
 namespace Consts;
-
-const DEBUG             = true;
+define(__NAMESPACE__ . '\DEBUG', in_array(PHP_SAPI, ['cli', 'cli-server']));
+/* ======================== Site Specific Config ===================== */
+const SITE_NAME = 'KRV COVID-19 Healthy Shopping Resource';
+const SITE_URL  = 'https://needs.kernvalley.us';
+/* =================================================================== */
 const BASE              = __DIR__ . DIRECTORY_SEPARATOR;
 const DATA_DIR          = BASE . 'data' . DIRECTORY_SEPARATOR;
 const LOGS_DIR          = BASE . 'logs' . DIRECTORY_SEPARATOR;
@@ -66,6 +69,8 @@ define(__NAMESPACE__ . '\BASE_PATH',
 			), '/')
 	,'/') . '/'
 );
+
+define(__NAMESPACE__ . '\HAS_EMAIL_CREDS', file_exists(EMAIL_CREDS_FILE));
 
 define(__NAMESPACE__ . '\HMAC_KEY', file_get_contents(HMAC_FILE));
 
