@@ -332,6 +332,11 @@ final class User implements JsonSerializable
 		}
 	}
 
+	final public function getNotifications(PDO $pdo, int $offset = 0, int $limit = 4): array
+	{
+		return Notification::getNotificationsForUser($pdo, $this, $offset, $limit);
+	}
+
 	public static function getPersonFromEmail(PDO $pdo, string $email):? Person
 	{
 		if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {

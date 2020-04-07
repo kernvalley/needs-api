@@ -239,8 +239,8 @@ final class Notification implements JSONSerializable
 	{
 		$stm = $pdo->prepare('UPDATE `Notification` SET `seen` = :seen WHERE `identifier` = :uuid LIMIT 1;');
 		return $stm->execute([
-			'uuid' => $this_>
-		])
+			'uuid' => $this->getData()->identifier,
+		]);
 	}
 
 	final public function valid(): bool
@@ -249,6 +249,12 @@ final class Notification implements JSONSerializable
 	}
 
 	final public static function getNotificationForUser(PDO $pdo, User $user):? Notification
+	{
+		$notifications = static::getNotificationsForUser($pdo, $user, 0, 1);
+		return count($notifications) === 1 ? $notifications[0] : null;
+	}
+
+	final public static function getNotificationsForUser(PDO $pdo, User $user, int $offset = 0, int $limit = 4): array
 	{
 		$stm = $pdo->prepare('SELECT JSON_OBJECT (
 				"data", JSON_OBJECT (
@@ -268,27 +274,29 @@ final class Notification implements JSONSerializable
 			FROM `Notification`
 			WHERE `user` = :user
 			AND `seen` = 0
-			LIMIT 0, 1');
+			LIMIT ' . $offset . ', ' . $limit . ';');
 
-			if ($stm->execute(['user' => $user->getIdentifier()]) and $data = $stm->fetchObject()) {
-				$notif = json_decode($data->json);
-				$pdo->prepare('UPDATE `Notification`
-				SET `seen` = 1
-				WHERE `identifier` = :uuid
-				LIMIT 1;')->execute(['uuid' => $notif->data->identifier]);
-
+			if ($stm->execute(['user' => $user->getIdentifier()]) and $results = $stm->fetchAll(PDO::FETCH_CLASS)) {
 				$stm = $pdo->prepare('SELECT `title`,
 					`action`,
 					`icon`
 				FROM `NotificationAction`
 				WHERE `notification` = :uuid;');
 
-				$stm->execute(['uuid' => $notif->data->identifier]);
-				$notif->actions = $stm->fetchAll(PDO::FETCH_CLASS);
+				return array_map(function(object $result) use ($stm): Notification
+				{
+					// $pdo->prepare('UPDATE `Notification`
+					// SET `seen` = 1
+					// WHERE `identifier` = :uuid
+					// LIMIT 1;')->execute(['uuid' => $notif->data->identifier]);
+					$notif = json_decode($result->json);
+					$stm->execute(['uuid' => $notif->data->identifier]);
+					$notif->actions = $stm->fetchAll(PDO::FETCH_CLASS);
+					return new Notification($notif);
 
-				return new Notification($notif);
+				}, $results);
 			} else {
-				return null;
+				return [];
 			}
 	}
 }

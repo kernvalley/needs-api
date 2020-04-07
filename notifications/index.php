@@ -20,9 +20,9 @@ try {
 			throw new HTTPexception('Missing token', HTTP::BAD_REQUEST);
 		} elseif (! $user->loginWithToken($req->get)) {
 			throw new HTTPException('Invalid or expired token', HTTP::UNAUTHORIZED);
-		} elseif ($notification = Notification::getForUser($pdo, $user)) {
+		} elseif ($notifications = $user->getNotifications($pdo)) {
 			Headers::contentType('application/json');
-			echo json_encode($notification);
+			echo json_encode($notifications);
 		} else {
 			Headers::status(HTTP::NO_CONTENT);
 		}
