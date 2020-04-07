@@ -38,9 +38,6 @@ class Person extends Thing
 	public function save(PDO $pdo):? string
 	{
 		if (! $this->valid()) {
-			header('Content-Type: application/json');
-			http_response_code(500);
-			exit(json_encode($this));
 			return null;
 		} else {
 			if ($this->getIdentifier() === null) {
