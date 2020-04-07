@@ -150,7 +150,12 @@ final class User implements JsonSerializable
 			WHERE `Person`.`email` = :email
 			LIMIT 1;');
 
-			if ($stm->execute(['email' => $data->get('email')]) and $user = $stm->fetchObject() and isset($user->identifier)) {
+			if (
+				$stm->execute(['email' => strtolower($data->get('email'))])
+					and $user = $stm->fetchObject()
+					and isset($user->identifier)
+					and password_verify($data->get('password', false), $user->password)
+			) {
 				return $this->_getUserByUUID($user->identifier);
 			} else {
 				return false;
