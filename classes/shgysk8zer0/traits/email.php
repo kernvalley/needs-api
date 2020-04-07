@@ -14,7 +14,7 @@ trait Email
 	{
 		if (isset($val)) {
 			if (filter_var($val, FILTER_VALIDATE_EMAIL)) {
-				$this->_email = $val;
+				$this->_email = strtolower($val);
 			} else {
 				throw new \InvalidArgumentException('Expected a valid email address');
 			}
