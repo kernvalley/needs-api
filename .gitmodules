@@ -1,3 +1,6 @@
 [submodule "classes/shgysk8zer0/phpapi"]
 	path = classes/shgysk8zer0/phpapi
 	url = https://github.com/shgysk8zer0/phpapi.git
+[submodule "classes/shgysk8zer0/phpgeo"]
+	path = classes/shgysk8zer0/phpgeo
+	url = https://github.com/shgysk8zer0/phpgeo.git
